@@ -52,9 +52,11 @@ type GOVUKConfig struct {
 }
 
 type LogConfig struct {
-	Level  string
-	Format string
-	Output string
+	Level      string
+	Format     string
+	Output     string
+	TimeFormat string
+	Colorize   bool
 }
 
 type CacheConfig struct {
@@ -117,9 +119,11 @@ func Load() (*Config, error) {
 			UserAgent:       getEnv("GOVUK_USER_AGENT", "GOV.UK-Cost-Dashboard/1.0"),
 		},
 		Log: LogConfig{
-			Level:  getEnv("LOG_LEVEL", "info"),
-			Format: getEnv("LOG_FORMAT", "json"),
-			Output: getEnv("LOG_OUTPUT", "stdout"),
+			Level:      getEnv("LOG_LEVEL", "info"),
+			Format:     getEnv("LOG_FORMAT", "console"),
+			Output:     getEnv("LOG_OUTPUT", "stdout"),
+			TimeFormat: getEnv("LOG_TIME_FORMAT", "rfc3339"),
+			Colorize:   getEnvAsBool("LOG_COLORIZE", true),
 		},
 		Cache: CacheConfig{
 			DefaultTTL:     getEnvAsDuration("CACHE_DEFAULT_TTL", 10*time.Minute),
@@ -219,9 +223,9 @@ func (c *Config) Validate() error {
 		errors = append(errors, ValidationError{"log.level", "log level must be one of: trace, debug, info, warn, error, fatal, panic"})
 	}
 
-	validLogFormats := []string{"json", "text"}
+	validLogFormats := []string{"json", "text", "console"}
 	if !contains(validLogFormats, c.Log.Format) {
-		errors = append(errors, ValidationError{"log.format", "log format must be 'json' or 'text'"})
+		errors = append(errors, ValidationError{"log.format", "log format must be 'json', 'text', or 'console'"})
 	}
 
 	// Cache validation

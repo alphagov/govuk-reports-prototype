@@ -14,9 +14,9 @@ import (
 	"govuk-cost-dashboard/internal/services"
 	"govuk-cost-dashboard/pkg/aws"
 	"govuk-cost-dashboard/pkg/govuk"
+	"govuk-cost-dashboard/pkg/logger"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -25,25 +25,43 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
 		os.Exit(1)
 	}
-	logger := setupLogger(cfg)
-
-	logger.Info("Starting GOV.UK Cost Dashboard")
-
-	awsClient, err := aws.NewClient(cfg, logger)
+	
+	log, err := logger.New(logger.Config{
+		Level:      cfg.Log.Level,
+		Format:     cfg.Log.Format,
+		Output:     cfg.Log.Output,
+		TimeFormat: cfg.Log.TimeFormat,
+		Colorize:   cfg.Log.Colorize,
+	})
 	if err != nil {
-		logger.WithError(err).Fatal("Failed to create AWS client")
+		fmt.Fprintf(os.Stderr, "Logger error: %v\n", err)
+		os.Exit(1)
+	}
+	
+	// Set as global logger
+	log.SetGlobalLogger()
+
+	log.LogStartup("GOV.UK Cost Dashboard", "1.0.0", map[string]interface{}{
+		"environment": cfg.Server.Environment,
+		"port":        cfg.Server.Port,
+		"log_level":   cfg.Log.Level,
+	})
+
+	awsClient, err := aws.NewClient(cfg, log)
+	if err != nil {
+		log.WithError(err).Fatal().Msg("Failed to create AWS client")
 	}
 
-	govukClient := govuk.NewClient(cfg, logger)
+	govukClient := govuk.NewClient(cfg, log)
 
-	costService := services.NewCostService(awsClient, govukClient, logger)
-	applicationService := services.NewApplicationService(awsClient, govukClient, logger)
+	costService := services.NewCostService(awsClient, govukClient, log)
+	applicationService := services.NewApplicationService(awsClient, govukClient, log)
 
 	healthHandler := handlers.NewHealthHandler()
-	costHandler := handlers.NewCostHandler(costService, logger)
-	applicationHandler := handlers.NewApplicationHandler(applicationService, logger)
+	costHandler := handlers.NewCostHandler(costService, log)
+	applicationHandler := handlers.NewApplicationHandler(applicationService, log)
 
-	router := setupRouter(cfg, logger, healthHandler, costHandler, applicationHandler)
+	router := setupRouter(cfg, log, healthHandler, costHandler, applicationHandler)
 
 	srv := &http.Server{
 		Addr:         cfg.GetBindAddress(),
@@ -54,9 +72,9 @@ func main() {
 	}
 
 	go func() {
-		logger.WithField("port", cfg.Server.Port).Info("Server starting")
+		log.Info().Str("address", cfg.GetBindAddress()).Msg("Server starting")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.WithError(err).Fatal("Failed to start server")
+			log.WithError(err).Fatal().Msg("Failed to start server")
 		}
 	}()
 
@@ -64,39 +82,20 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("Shutting down server...")
+	shutdownStart := time.Now()
+	log.Info().Msg("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		logger.WithError(err).Error("Server forced to shutdown")
+		log.WithError(err).Error().Msg("Server forced to shutdown")
 	} else {
-		logger.Info("Server shutdown completed")
+		log.LogShutdown("GOV.UK Cost Dashboard", time.Since(shutdownStart))
 	}
 }
 
-func setupLogger(cfg *config.Config) *logrus.Logger {
-	logger := logrus.New()
-
-	level, err := logrus.ParseLevel(cfg.Log.Level)
-	if err != nil {
-		level = logrus.InfoLevel
-	}
-	logger.SetLevel(level)
-
-	if cfg.Log.Format == "json" {
-		logger.SetFormatter(&logrus.JSONFormatter{})
-	} else {
-		logger.SetFormatter(&logrus.TextFormatter{
-			FullTimestamp: true,
-		})
-	}
-
-	return logger
-}
-
-func setupRouter(cfg *config.Config, logger *logrus.Logger, healthHandler *handlers.HealthHandler, costHandler *handlers.CostHandler, applicationHandler *handlers.ApplicationHandler) *gin.Engine {
+func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers.HealthHandler, costHandler *handlers.CostHandler, applicationHandler *handlers.ApplicationHandler) *gin.Engine {
 	if cfg.Server.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -104,7 +103,7 @@ func setupRouter(cfg *config.Config, logger *logrus.Logger, healthHandler *handl
 	router := gin.New()
 
 	// Request timeout middleware
-	router.Use(handlers.TimeoutMiddleware(30*time.Second, logger))
+	router.Use(handlers.TimeoutMiddleware(30*time.Second, log))
 	
 	// Security headers
 	router.Use(handlers.SecurityHeadersMiddleware())
@@ -113,21 +112,21 @@ func setupRouter(cfg *config.Config, logger *logrus.Logger, healthHandler *handl
 	router.Use(handlers.CORSMiddleware(cfg))
 	
 	// Rate limiting and bot detection
-	router.Use(handlers.RateLimitMiddleware(logger))
+	router.Use(handlers.RateLimitMiddleware(log))
 	
 	// Structured logging
-	router.Use(handlers.LoggerMiddleware(logger))
+	router.Use(handlers.LoggerMiddleware(log))
 	
 	// Metrics collection
 	if cfg.Monitoring.MetricsEnabled {
-		router.Use(handlers.MetricsMiddleware(logger))
+		router.Use(handlers.MetricsMiddleware(log))
 	}
 	
 	// Health check middleware for circuit breaker
-	router.Use(handlers.HealthCheckMiddleware(logger))
+	router.Use(handlers.HealthCheckMiddleware(log))
 	
 	// Error handling with panic recovery
-	router.Use(handlers.ErrorHandler(logger))
+	router.Use(handlers.ErrorHandler(log))
 	
 	// Gin's built-in recovery (backup)
 	router.Use(gin.Recovery())

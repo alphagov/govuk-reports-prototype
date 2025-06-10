@@ -7,27 +7,27 @@ import (
 	"govuk-cost-dashboard/internal/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+	"govuk-cost-dashboard/pkg/logger"
 )
 
 type CostHandler struct {
 	costService *services.CostService
-	logger      *logrus.Logger
+	logger      *logger.Logger
 }
 
-func NewCostHandler(costService *services.CostService, logger *logrus.Logger) *CostHandler {
+func NewCostHandler(costService *services.CostService, log *logger.Logger) *CostHandler {
 	return &CostHandler{
 		costService: costService,
-		logger:      logger,
+		logger:      log,
 	}
 }
 
 func (h *CostHandler) GetCostSummary(c *gin.Context) {
-	h.logger.Info("Fetching cost summary")
+	h.logger.Info().Msg("Fetching cost summary")
 
 	summary, err := h.costService.GetCostSummary()
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to fetch cost summary")
+		h.logger.WithError(err).Error().Msg("Failed to fetch cost summary")
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_server_error",
 			Message: "Failed to fetch cost summary",

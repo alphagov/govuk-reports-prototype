@@ -10,25 +10,25 @@ import (
 
 	"govuk-cost-dashboard/internal/config"
 	"govuk-cost-dashboard/internal/models"
+	"govuk-cost-dashboard/pkg/logger"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 // ErrorHandler provides comprehensive error handling with proper logging
-func ErrorHandler(logger *logrus.Logger) gin.HandlerFunc {
+func ErrorHandler(log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if recovery := recover(); recovery != nil {
 				// Log panic with stack trace
-				logger.WithFields(logrus.Fields{
-					"panic":      recovery,
-					"stack":      string(debug.Stack()),
-					"path":       c.Request.URL.Path,
-					"method":     c.Request.Method,
-					"client_ip":  c.ClientIP(),
-					"user_agent": c.Request.UserAgent(),
-				}).Error("Panic recovered")
+				log.Error().
+					Interface("panic", recovery).
+					Str("stack", string(debug.Stack())).
+					Str("path", c.Request.URL.Path).
+					Str("method", c.Request.Method).
+					Str("client_ip", c.ClientIP()).
+					Str("user_agent", c.Request.UserAgent()).
+					Msg("Panic recovered")
 
 				c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 					Error:   "internal_server_error",
@@ -45,14 +45,14 @@ func ErrorHandler(logger *logrus.Logger) gin.HandlerFunc {
 			err := c.Errors.Last()
 			
 			// Log the error
-			logger.WithFields(logrus.Fields{
-				"error":      err.Error(),
-				"type":       err.Type,
-				"path":       c.Request.URL.Path,
-				"method":     c.Request.Method,
-				"client_ip":  c.ClientIP(),
-				"user_agent": c.Request.UserAgent(),
-			}).Error("Request error")
+			log.Error().
+				Str("error", err.Error()).
+				Interface("type", err.Type).
+				Str("path", c.Request.URL.Path).
+				Str("method", c.Request.Method).
+				Str("client_ip", c.ClientIP()).
+				Str("user_agent", c.Request.UserAgent()).
+				Msg("Request error")
 
 			switch err.Type {
 			case gin.ErrorTypeBind:
@@ -88,7 +88,7 @@ func ErrorHandler(logger *logrus.Logger) gin.HandlerFunc {
 }
 
 // TimeoutMiddleware adds request timeout handling
-func TimeoutMiddleware(timeout time.Duration, logger *logrus.Logger) gin.HandlerFunc {
+func TimeoutMiddleware(timeout time.Duration, log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)
 		defer cancel()
@@ -104,12 +104,12 @@ func TimeoutMiddleware(timeout time.Duration, logger *logrus.Logger) gin.Handler
 		select {
 		case <-ctx.Done():
 			if ctx.Err() == context.DeadlineExceeded {
-				logger.WithFields(logrus.Fields{
-					"path":      c.Request.URL.Path,
-					"method":    c.Request.Method,
-					"client_ip": c.ClientIP(),
-					"timeout":   timeout,
-				}).Warn("Request timeout")
+				log.Warn().
+					Str("path", c.Request.URL.Path).
+					Str("method", c.Request.Method).
+					Str("client_ip", c.ClientIP()).
+					Dur("timeout", timeout).
+					Msg("Request timeout")
 
 				c.JSON(http.StatusRequestTimeout, models.ErrorResponse{
 					Error:   "request_timeout",
@@ -125,7 +125,7 @@ func TimeoutMiddleware(timeout time.Duration, logger *logrus.Logger) gin.Handler
 }
 
 // RateLimitMiddleware provides basic rate limiting (simplified implementation)
-func RateLimitMiddleware(logger *logrus.Logger) gin.HandlerFunc {
+func RateLimitMiddleware(log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Skip rate limiting for health checks
 		if strings.HasPrefix(c.Request.URL.Path, "/api/health") ||
@@ -142,11 +142,9 @@ func RateLimitMiddleware(logger *logrus.Logger) gin.HandlerFunc {
 		// For now, we'll just log potential abuse
 		userAgent := c.Request.UserAgent()
 		if userAgent == "" || strings.Contains(strings.ToLower(userAgent), "bot") {
-			logger.WithFields(logrus.Fields{
-				"client_ip":  clientIP,
-				"user_agent": userAgent,
-				"path":       c.Request.URL.Path,
-			}).Info("Potential bot traffic detected")
+			log.LogSecurityEvent("potential_bot_traffic", clientIP, userAgent, map[string]interface{}{
+				"path": c.Request.URL.Path,
+			})
 		}
 
 		c.Next()
@@ -167,7 +165,7 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 }
 
 // LoggerMiddleware provides structured request logging
-func LoggerMiddleware(logger *logrus.Logger) gin.HandlerFunc {
+func LoggerMiddleware(log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path
@@ -185,34 +183,8 @@ func LoggerMiddleware(logger *logrus.Logger) gin.HandlerFunc {
 			path = path + "?" + raw
 		}
 
-		// Determine log level based on status code
-		logLevel := logrus.InfoLevel
-		if statusCode >= 400 && statusCode < 500 {
-			logLevel = logrus.WarnLevel
-		} else if statusCode >= 500 {
-			logLevel = logrus.ErrorLevel
-		}
-
-		fields := logrus.Fields{
-			"status_code": statusCode,
-			"latency_ms":  latency.Milliseconds(),
-			"client_ip":   clientIP,
-			"method":      method,
-			"path":        path,
-			"body_size":   bodySize,
-		}
-
-		// Add error information if present
-		if len(c.Errors) > 0 {
-			fields["errors"] = c.Errors.String()
-		}
-
-		// Log slow requests
-		if latency > 5*time.Second {
-			fields["slow_request"] = true
-		}
-
-		logger.WithFields(fields).Log(logLevel, "HTTP Request")
+		// Use the optimized HTTP request logging helper
+		log.LogHTTPRequest(method, path, statusCode, latency, clientIP, bodySize)
 	}
 }
 
@@ -262,7 +234,7 @@ func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 }
 
 // HealthCheckMiddleware provides circuit breaker functionality for health checks
-func HealthCheckMiddleware(logger *logrus.Logger) gin.HandlerFunc {
+func HealthCheckMiddleware(log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Skip for actual health check endpoints
 		if strings.HasPrefix(c.Request.URL.Path, "/api/health") ||
@@ -279,7 +251,7 @@ func HealthCheckMiddleware(logger *logrus.Logger) gin.HandlerFunc {
 }
 
 // MetricsMiddleware collects basic metrics
-func MetricsMiddleware(logger *logrus.Logger) gin.HandlerFunc {
+func MetricsMiddleware(log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		
@@ -288,14 +260,12 @@ func MetricsMiddleware(logger *logrus.Logger) gin.HandlerFunc {
 		duration := time.Since(start)
 		
 		// Log metrics for monitoring systems to pick up
-		logger.WithFields(logrus.Fields{
-			"metric_type":    "http_request",
-			"method":         c.Request.Method,
-			"path":          c.Request.URL.Path,
-			"status_code":   c.Writer.Status(),
-			"duration_ms":   duration.Milliseconds(),
+		log.LogPerformance("http_request", duration, map[string]interface{}{
+			"method":        c.Request.Method,
+			"path":         c.Request.URL.Path,
+			"status_code":  c.Writer.Status(),
 			"response_size": c.Writer.Size(),
-		}).Debug("HTTP metrics")
+		})
 	}
 }
 

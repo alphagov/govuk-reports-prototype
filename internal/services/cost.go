@@ -7,29 +7,29 @@ import (
 	"govuk-cost-dashboard/pkg/aws"
 	"govuk-cost-dashboard/pkg/govuk"
 
-	"github.com/sirupsen/logrus"
+	"govuk-cost-dashboard/pkg/logger"
 )
 
 type CostService struct {
 	awsClient   *aws.Client
 	govukClient *govuk.Client
-	logger      *logrus.Logger
+	logger      *logger.Logger
 }
 
-func NewCostService(awsClient *aws.Client, govukClient *govuk.Client, logger *logrus.Logger) *CostService {
+func NewCostService(awsClient *aws.Client, govukClient *govuk.Client, log *logger.Logger) *CostService {
 	return &CostService{
 		awsClient:   awsClient,
 		govukClient: govukClient,
-		logger:      logger,
+		logger:      log,
 	}
 }
 
 func (s *CostService) GetCostSummary() (*models.CostSummary, error) {
-	s.logger.Info("Fetching AWS cost data")
+	s.logger.Info().Msg("Fetching AWS cost data")
 
 	costData, err := s.awsClient.GetCostData()
 	if err != nil {
-		s.logger.WithError(err).Error("Failed to fetch AWS cost data")
+		s.logger.WithError(err).Error().Msg("Failed to fetch AWS cost data")
 		return nil, err
 	}
 

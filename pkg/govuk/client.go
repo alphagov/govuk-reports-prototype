@@ -12,7 +12,7 @@ import (
 
 	"govuk-cost-dashboard/internal/config"
 
-	"github.com/sirupsen/logrus"
+	"govuk-cost-dashboard/pkg/logger"
 )
 
 const (
@@ -29,7 +29,7 @@ type Client struct {
 	baseURL    string
 	apiKey     string
 	httpClient *http.Client
-	logger     *logrus.Logger
+	logger     *logger.Logger
 	cache      map[string]*CacheEntry
 	cacheMu    sync.RWMutex
 	cacheTTL   time.Duration
@@ -44,8 +44,8 @@ type ClientOptions struct {
 	RetryDelay time.Duration
 }
 
-func NewClient(cfg *config.Config, logger *logrus.Logger) *Client {
-	return NewClientWithOptions(cfg, logger, ClientOptions{
+func NewClient(cfg *config.Config, log *logger.Logger) *Client {
+	return NewClientWithOptions(cfg, log, ClientOptions{
 		Timeout:    cfg.GOVUK.AppsAPITimeout,
 		CacheTTL:   cfg.GOVUK.AppsAPICacheTTL,
 		Retries:    cfg.GOVUK.AppsAPIRetries,
@@ -53,7 +53,7 @@ func NewClient(cfg *config.Config, logger *logrus.Logger) *Client {
 	})
 }
 
-func NewClientWithOptions(cfg *config.Config, logger *logrus.Logger, opts ClientOptions) *Client {
+func NewClientWithOptions(cfg *config.Config, log *logger.Logger, opts ClientOptions) *Client {
 	if opts.Timeout == 0 {
 		opts.Timeout = DefaultTimeout
 	}
@@ -73,7 +73,7 @@ func NewClientWithOptions(cfg *config.Config, logger *logrus.Logger, opts Client
 		httpClient: &http.Client{
 			Timeout: opts.Timeout,
 		},
-		logger:     logger,
+		logger:     log,
 		cache:      make(map[string]*CacheEntry),
 		cacheTTL:   opts.CacheTTL,
 		retries:    opts.Retries,
@@ -86,10 +86,10 @@ func (c *Client) doRequest(ctx context.Context, url string) (*http.Response, err
 	
 	for attempt := 0; attempt <= c.retries; attempt++ {
 		if attempt > 0 {
-			c.logger.WithFields(logrus.Fields{
+			c.logger.WithFields(map[string]interface{}{
 				"attempt": attempt,
 				"url":     url,
-			}).Info("Retrying request")
+			}).Info().Msg("Retrying request")
 			
 			select {
 			case <-ctx.Done():
@@ -111,11 +111,11 @@ func (c *Client) doRequest(ctx context.Context, url string) (*http.Response, err
 			req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		}
 
-		c.logger.WithFields(logrus.Fields{
+		c.logger.WithFields(map[string]interface{}{
 			"method":  req.Method,
 			"url":     req.URL.String(),
 			"attempt": attempt + 1,
-		}).Debug("Making HTTP request")
+		}).Debug().Msg("Making HTTP request")
 
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
@@ -125,7 +125,7 @@ func (c *Client) doRequest(ctx context.Context, url string) (*http.Response, err
 
 		if resp.StatusCode == http.StatusTooManyRequests {
 			resp.Body.Close()
-			c.logger.WithField("url", url).Warn("Rate limited, sleeping before retry")
+			c.logger.WithField("url", url).Warn().Msg("Rate limited, sleeping before retry")
 			
 			select {
 			case <-ctx.Done():
@@ -204,13 +204,13 @@ func (c *Client) clearExpiredCache() {
 
 // GetAllApplications fetches all applications from the GOV.UK apps.json API
 func (c *Client) GetAllApplications(ctx context.Context) ([]Application, error) {
-	c.logger.Info("Fetching all GOV.UK applications")
+	c.logger.Info().Msg("Fetching all GOV.UK applications")
 	
 	cacheKey := c.getCacheKey("apps")
 	
 	// Check cache first
 	if entry, found := c.getFromCache(cacheKey); found {
-		c.logger.Debug("Returning applications from cache")
+		c.logger.Debug().Msg("Returning applications from cache")
 		return entry.Data, nil
 	}
 	
@@ -219,7 +219,7 @@ func (c *Client) GetAllApplications(ctx context.Context) ([]Application, error) 
 	
 	resp, err := c.doRequest(ctx, AppsJSONEndpoint)
 	if err != nil {
-		c.logger.WithError(err).Error("Failed to fetch applications")
+		c.logger.WithError(err).Error().Msg("Failed to fetch applications")
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -229,17 +229,17 @@ func (c *Client) GetAllApplications(ctx context.Context) ([]Application, error) 
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 	
-	c.logger.WithFields(logrus.Fields{
+	c.logger.WithFields(map[string]interface{}{
 		"status_code":   resp.StatusCode,
 		"content_length": len(body),
-	}).Debug("Received API response")
+	}).Debug().Msg("Received API response")
 	
 	var applications APIResponse
 	if err := json.Unmarshal(body, &applications); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 	
-	c.logger.WithField("app_count", len(applications)).Info("Successfully fetched applications")
+	c.logger.WithField("app_count", len(applications)).Info().Msg("Successfully fetched applications")
 	
 	// Cache the response
 	c.setCache(cacheKey, applications)
@@ -249,7 +249,7 @@ func (c *Client) GetAllApplications(ctx context.Context) ([]Application, error) 
 
 // GetApplicationByName fetches a specific application by name
 func (c *Client) GetApplicationByName(ctx context.Context, name string) (*Application, error) {
-	c.logger.WithField("app_name", name).Info("Fetching application by name")
+	c.logger.WithField("app_name", name).Info().Msg("Fetching application by name")
 	
 	applications, err := c.GetAllApplications(ctx)
 	if err != nil {
@@ -262,7 +262,7 @@ func (c *Client) GetApplicationByName(ctx context.Context, name string) (*Applic
 	for _, app := range applications {
 		if strings.ToLower(app.AppName) == normalizedName || 
 		   strings.ToLower(app.Shortname) == normalizedName {
-			c.logger.WithField("app_name", app.AppName).Debug("Found application")
+			c.logger.WithField("app_name", app.AppName).Debug().Msg("Found application")
 			return &app, nil
 		}
 	}
@@ -272,7 +272,7 @@ func (c *Client) GetApplicationByName(ctx context.Context, name string) (*Applic
 
 // GetApplicationsByTeam fetches all applications for a specific team
 func (c *Client) GetApplicationsByTeam(ctx context.Context, team string) ([]Application, error) {
-	c.logger.WithField("team", team).Info("Fetching applications by team")
+	c.logger.WithField("team", team).Info().Msg("Fetching applications by team")
 	
 	applications, err := c.GetAllApplications(ctx)
 	if err != nil {
@@ -288,17 +288,17 @@ func (c *Client) GetApplicationsByTeam(ctx context.Context, team string) ([]Appl
 		}
 	}
 	
-	c.logger.WithFields(logrus.Fields{
+	c.logger.WithFields(map[string]interface{}{
 		"team":      team,
 		"app_count": len(teamApps),
-	}).Debug("Found applications for team")
+	}).Debug().Msg("Found applications for team")
 	
 	return teamApps, nil
 }
 
 // GetApplicationsByHosting fetches all applications hosted on a specific platform
 func (c *Client) GetApplicationsByHosting(ctx context.Context, hosting string) ([]Application, error) {
-	c.logger.WithField("hosting", hosting).Info("Fetching applications by hosting platform")
+	c.logger.WithField("hosting", hosting).Info().Msg("Fetching applications by hosting platform")
 	
 	applications, err := c.GetAllApplications(ctx)
 	if err != nil {
@@ -314,10 +314,10 @@ func (c *Client) GetApplicationsByHosting(ctx context.Context, hosting string) (
 		}
 	}
 	
-	c.logger.WithFields(logrus.Fields{
+	c.logger.WithFields(map[string]interface{}{
 		"hosting":   hosting,
 		"app_count": len(hostingApps),
-	}).Debug("Found applications for hosting platform")
+	}).Debug().Msg("Found applications for hosting platform")
 	
 	return hostingApps, nil
 }
@@ -328,11 +328,11 @@ func (c *Client) ClearCache() {
 	defer c.cacheMu.Unlock()
 	
 	c.cache = make(map[string]*CacheEntry)
-	c.logger.Info("Cache cleared")
+	c.logger.Info().Msg("Cache cleared")
 }
 
 func (c *Client) GetDepartmentInfo(departmentID string) (map[string]interface{}, error) {
-	c.logger.WithField("department_id", departmentID).Info("Fetching department information")
+	c.logger.WithField("department_id", departmentID).Info().Msg("Fetching department information")
 	
 	// Placeholder implementation - would make actual API calls to GOV.UK APIs
 	return map[string]interface{}{

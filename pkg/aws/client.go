@@ -17,12 +17,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer"
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer/types"
-	"github.com/sirupsen/logrus"
+	"govuk-cost-dashboard/pkg/logger"
 )
 
 type Client struct {
 	costExplorer *costexplorer.Client
-	logger       *logrus.Logger
+	logger       *logger.Logger
 }
 
 // mfaTokenProvider prompts for MFA token input or reads from environment
@@ -42,7 +42,7 @@ func mfaTokenProvider() (string, error) {
 	return strings.TrimSpace(token), nil
 }
 
-func NewClient(cfg *config.Config, logger *logrus.Logger) (*Client, error) {
+func NewClient(cfg *config.Config, log *logger.Logger) (*Client, error) {
 	var configOptions []func(*awsconfig.LoadOptions) error
 	
 	// Set region
@@ -55,13 +55,13 @@ func NewClient(cfg *config.Config, logger *logrus.Logger) (*Client, error) {
 	
 	// Use AWS profile if specified
 	if cfg.AWS.Profile != "" {
-		logger.WithField("profile", cfg.AWS.Profile).Info("Using AWS profile")
+		log.WithField("profile", cfg.AWS.Profile).Info().Msg("Using AWS profile")
 		configOptions = append(configOptions, awsconfig.WithSharedConfigProfile(cfg.AWS.Profile))
 	}
 	
 	// If explicit credentials are provided, use them
 	if cfg.AWS.AccessKeyID != "" && cfg.AWS.SecretAccessKey != "" {
-		logger.Info("Using explicit AWS credentials")
+		log.Info().Msg("Using explicit AWS credentials")
 		credentials := aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
 			return aws.Credentials{
 				AccessKeyID:     cfg.AWS.AccessKeyID,
@@ -72,7 +72,7 @@ func NewClient(cfg *config.Config, logger *logrus.Logger) (*Client, error) {
 		})
 		configOptions = append(configOptions, awsconfig.WithCredentialsProvider(credentials))
 	} else {
-		logger.Info("Using AWS default credential chain (profile, environment, EC2 role)")
+		log.Info().Msg("Using AWS default credential chain (profile, environment, EC2 role)")
 	}
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(context.TODO(), configOptions...)
@@ -82,7 +82,7 @@ func NewClient(cfg *config.Config, logger *logrus.Logger) (*Client, error) {
 
 	return &Client{
 		costExplorer: costexplorer.NewFromConfig(awsCfg),
-		logger:       logger,
+		logger:       log,
 	}, nil
 }
 
@@ -107,7 +107,7 @@ func (c *Client) GetCostData() ([]models.CostData, error) {
 
 	result, err := c.costExplorer.GetCostAndUsage(context.TODO(), input)
 	if err != nil {
-		c.logger.WithError(err).Error("Failed to get cost and usage data from AWS")
+		c.logger.WithError(err).Error().Msg("Failed to get cost and usage data from AWS")
 		return nil, err
 	}
 

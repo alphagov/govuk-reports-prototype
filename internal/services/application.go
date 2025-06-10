@@ -10,38 +10,38 @@ import (
 	"govuk-cost-dashboard/pkg/aws"
 	"govuk-cost-dashboard/pkg/govuk"
 
-	"github.com/sirupsen/logrus"
+	"govuk-cost-dashboard/pkg/logger"
 )
 
 type ApplicationService struct {
 	awsClient   *aws.Client
 	govukClient *govuk.Client
-	logger      *logrus.Logger
+	logger      *logger.Logger
 }
 
-func NewApplicationService(awsClient *aws.Client, govukClient *govuk.Client, logger *logrus.Logger) *ApplicationService {
+func NewApplicationService(awsClient *aws.Client, govukClient *govuk.Client, log *logger.Logger) *ApplicationService {
 	return &ApplicationService{
 		awsClient:   awsClient,
 		govukClient: govukClient,
-		logger:      logger,
+		logger:      log,
 	}
 }
 
 // GetAllApplications returns all applications with cost summaries
 func (s *ApplicationService) GetAllApplications(ctx context.Context) (*models.ApplicationListResponse, error) {
-	s.logger.Info("Fetching all applications with cost data")
+	s.logger.Info().Msg("Fetching all applications with cost data")
 
 	// Get applications from GOV.UK API
 	apps, err := s.govukClient.GetAllApplications(ctx)
 	if err != nil {
-		s.logger.WithError(err).Error("Failed to fetch applications")
+		s.logger.WithError(err).Error().Msg("Failed to fetch applications")
 		return nil, err
 	}
 
 	// Get cost data from AWS (for demo, we'll simulate costs)
 	costData, err := s.awsClient.GetCostData()
 	if err != nil {
-		s.logger.WithError(err).Warn("Failed to fetch AWS cost data, using simulated data")
+		s.logger.WithError(err).Warn().Msg("Failed to fetch AWS cost data, using simulated data")
 		costData = s.generateSimulatedCosts(apps)
 	}
 
@@ -81,17 +81,17 @@ func (s *ApplicationService) GetAllApplications(ctx context.Context) (*models.Ap
 		LastUpdated:  time.Now(),
 	}
 
-	s.logger.WithFields(logrus.Fields{
+	s.logger.WithFields(map[string]interface{}{
 		"app_count":  len(applicationSummaries),
 		"total_cost": totalCost,
-	}).Info("Successfully processed applications with costs")
+	}).Info().Msg("Successfully processed applications with costs")
 
 	return response, nil
 }
 
 // GetApplicationByName returns detailed application data with cost breakdown
 func (s *ApplicationService) GetApplicationByName(ctx context.Context, name string) (*models.ApplicationDetail, error) {
-	s.logger.WithField("app_name", name).Info("Fetching application details")
+	s.logger.WithField("app_name", name).Info().Msg("Fetching application details")
 
 	// Get specific application
 	app, err := s.govukClient.GetApplicationByName(ctx, name)
@@ -102,7 +102,7 @@ func (s *ApplicationService) GetApplicationByName(ctx context.Context, name stri
 	// Get cost data
 	costData, err := s.awsClient.GetCostData()
 	if err != nil {
-		s.logger.WithError(err).Warn("Failed to fetch AWS cost data, using simulated data")
+		s.logger.WithError(err).Warn().Msg("Failed to fetch AWS cost data, using simulated data")
 		costData = s.generateSimulatedCosts([]govuk.Application{*app})
 	}
 
@@ -138,7 +138,7 @@ func (s *ApplicationService) GetApplicationByName(ctx context.Context, name stri
 
 // GetApplicationServices returns service cost breakdown for an application
 func (s *ApplicationService) GetApplicationServices(ctx context.Context, name string) ([]models.ServiceCost, error) {
-	s.logger.WithField("app_name", name).Info("Fetching application service costs")
+	s.logger.WithField("app_name", name).Info().Msg("Fetching application service costs")
 
 	// Get specific application
 	app, err := s.govukClient.GetApplicationByName(ctx, name)
@@ -149,7 +149,7 @@ func (s *ApplicationService) GetApplicationServices(ctx context.Context, name st
 	// Get cost data
 	costData, err := s.awsClient.GetCostData()
 	if err != nil {
-		s.logger.WithError(err).Warn("Failed to fetch AWS cost data, using simulated data")
+		s.logger.WithError(err).Warn().Msg("Failed to fetch AWS cost data, using simulated data")
 		costData = s.generateSimulatedCosts([]govuk.Application{*app})
 	}
 
@@ -189,12 +189,12 @@ func (s *ApplicationService) findExactCostMatch(app govuk.Application, costData 
 		for _, match := range possibleMatches {
 			if strings.Contains(serviceName, strings.ToLower(match)) ||
 			   strings.Contains(strings.ToLower(match), serviceName) {
-				s.logger.WithFields(logrus.Fields{
+				s.logger.WithFields(map[string]interface{}{
 					"app":     app.AppName,
 					"service": costItem.Service,
 					"match":   match,
 					"cost":    costItem.Amount,
-				}).Debug("Found exact cost match")
+				}).Debug().Msg("Found exact cost match")
 				return costItem.Amount
 			}
 		}
@@ -224,7 +224,7 @@ func (s *ApplicationService) estimateApplicationCost(app govuk.Application, cost
 	hashMultiplier := s.getConsistentHashMultiplier(app.AppName)
 	finalCost *= hashMultiplier
 	
-	s.logger.WithFields(logrus.Fields{
+	s.logger.WithFields(map[string]interface{}{
 		"app":                  app.AppName,
 		"base_cost":           baseCost,
 		"team_multiplier":     teamMultiplier,
@@ -232,7 +232,7 @@ func (s *ApplicationService) estimateApplicationCost(app govuk.Application, cost
 		"complexity_multiplier": complexityMultiplier,
 		"hash_multiplier":     hashMultiplier,
 		"final_cost":          finalCost,
-	}).Debug("Calculated estimated cost")
+	}).Debug().Msg("Calculated estimated cost")
 	
 	return finalCost
 }

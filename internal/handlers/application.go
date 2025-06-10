@@ -7,30 +7,30 @@ import (
 
 	"govuk-cost-dashboard/internal/models"
 	"govuk-cost-dashboard/internal/services"
+	"govuk-cost-dashboard/pkg/logger"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 type ApplicationHandler struct {
 	applicationService *services.ApplicationService
-	logger             *logrus.Logger
+	logger             *logger.Logger
 }
 
-func NewApplicationHandler(applicationService *services.ApplicationService, logger *logrus.Logger) *ApplicationHandler {
+func NewApplicationHandler(applicationService *services.ApplicationService, log *logger.Logger) *ApplicationHandler {
 	return &ApplicationHandler{
 		applicationService: applicationService,
-		logger:             logger,
+		logger:             log,
 	}
 }
 
 // GetApplications handles GET /api/applications
 func (h *ApplicationHandler) GetApplications(c *gin.Context) {
-	h.logger.Info("Handling request for all applications")
+	h.logger.Info().Msg("Handling request for all applications")
 
 	applications, err := h.applicationService.GetAllApplications(c.Request.Context())
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to fetch applications")
+		h.logger.WithError(err).Error().Msg("Failed to fetch applications")
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_server_error",
 			Message: "Failed to fetch applications",
@@ -39,7 +39,7 @@ func (h *ApplicationHandler) GetApplications(c *gin.Context) {
 		return
 	}
 
-	h.logger.WithField("app_count", applications.Count).Info("Successfully fetched applications")
+	h.logger.WithField("app_count", applications.Count).Info().Msg("Successfully fetched applications")
 	c.JSON(http.StatusOK, applications)
 }
 
@@ -55,7 +55,7 @@ func (h *ApplicationHandler) GetApplication(c *gin.Context) {
 		return
 	}
 
-	h.logger.WithField("app_name", name).Info("Handling request for specific application")
+	h.logger.WithField("app_name", name).Info().Msg("Handling request for specific application")
 
 	application, err := h.applicationService.GetApplicationByName(c.Request.Context(), name)
 	if err != nil {
@@ -68,7 +68,7 @@ func (h *ApplicationHandler) GetApplication(c *gin.Context) {
 			return
 		}
 
-		h.logger.WithError(err).Error("Failed to fetch application")
+		h.logger.WithError(err).Error().Msg("Failed to fetch application")
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_server_error",
 			Message: "Failed to fetch application",
@@ -77,7 +77,7 @@ func (h *ApplicationHandler) GetApplication(c *gin.Context) {
 		return
 	}
 
-	h.logger.WithField("app_name", name).Info("Successfully fetched application")
+	h.logger.WithField("app_name", name).Info().Msg("Successfully fetched application")
 	c.JSON(http.StatusOK, application)
 }
 
@@ -93,7 +93,7 @@ func (h *ApplicationHandler) GetApplicationServices(c *gin.Context) {
 		return
 	}
 
-	h.logger.WithField("app_name", name).Info("Handling request for application services")
+	h.logger.WithField("app_name", name).Info().Msg("Handling request for application services")
 
 	services, err := h.applicationService.GetApplicationServices(c.Request.Context(), name)
 	if err != nil {
@@ -106,7 +106,7 @@ func (h *ApplicationHandler) GetApplicationServices(c *gin.Context) {
 			return
 		}
 
-		h.logger.WithError(err).Error("Failed to fetch application services")
+		h.logger.WithError(err).Error().Msg("Failed to fetch application services")
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_server_error",
 			Message: "Failed to fetch application services",
@@ -121,17 +121,17 @@ func (h *ApplicationHandler) GetApplicationServices(c *gin.Context) {
 		"count":       len(services),
 	}
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(map[string]interface{}{
 		"app_name":      name,
 		"service_count": len(services),
-	}).Info("Successfully fetched application services")
+	}).Info().Msg("Successfully fetched application services")
 
 	c.JSON(http.StatusOK, response)
 }
 
 // GetApplicationsPage handles GET / - serves the main dashboard page
 func (h *ApplicationHandler) GetApplicationsPage(c *gin.Context) {
-	h.logger.Info("Serving applications dashboard page")
+	h.logger.Info().Msg("Serving applications dashboard page")
 	
 	c.HTML(http.StatusOK, "applications.html", gin.H{
 		"title": "GOV.UK Cost Dashboard",
@@ -149,7 +149,7 @@ func (h *ApplicationHandler) GetApplicationPage(c *gin.Context) {
 		return
 	}
 
-	h.logger.WithField("app_name", name).Info("Serving application detail page")
+	h.logger.WithField("app_name", name).Info().Msg("Serving application detail page")
 	
 	c.HTML(http.StatusOK, "application-detail.html", gin.H{
 		"title":           fmt.Sprintf("%s - GOV.UK Cost Dashboard", name),
