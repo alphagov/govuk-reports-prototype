@@ -1,0 +1,130 @@
+/* GOV.UK Design System inspired styles */
+body {
+    font-family: "GDS Transport", arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f3f2f1;
+    color: #0b0c0c;
+}
+
+.govuk-header {
+    background-color: #0b0c0c;
+    color: white;
+    padding: 10px 0;
+}
+
+.govuk-header__container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 15px;
+    display: flex;
+    align-items: center;
+}
+
+.govuk-header__logotype-text {
+    font-weight: bold;
+    font-size: 24px;
+    text-decoration: none;
+    color: white;
+}
+
+.govuk-header__content {
+    margin-left: 20px;
+}
+
+.govuk-header__link--service-name {
+    font-size: 19px;
+    font-weight: bold;
+    color: white;
+}
+
+.govuk-main-wrapper {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 30px 15px;
+}
+
+.govuk-grid-row {
+    margin: 0 -15px;
+}
+
+.govuk-grid-column-full {
+    padding: 0 15px;
+    width: 100%;
+}
+
+.govuk-heading-xl {
+    font-size: 48px;
+    line-height: 1.04167;
+    font-weight: bold;
+    margin: 0 0 30px 0;
+}
+
+.govuk-summary-card {
+    border: 1px solid #b1b4b6;
+    margin-bottom: 20px;
+}
+
+.govuk-summary-card__title-wrapper {
+    background-color: #f3f2f1;
+    padding: 15px 20px;
+    border-bottom: 1px solid #b1b4b6;
+}
+
+.govuk-summary-card__title {
+    font-size: 19px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.govuk-summary-card__content {
+    padding: 20px;
+    background-color: white;
+}
+
+.cost-amount {
+    font-size: 36px;
+    font-weight: bold;
+    color: #005ea5;
+    margin-bottom: 10px;
+}
+
+.cost-period {
+    color: #6f777b;
+    margin-bottom: 20px;
+}
+
+.service-item {
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f2f1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.service-item:last-child {
+    border-bottom: none;
+}
+
+.service-name {
+    font-weight: bold;
+}
+
+.service-cost {
+    color: #005ea5;
+    font-weight: bold;
+}
+
+.loading {
+    text-align: center;
+    color: #6f777b;
+    font-style: italic;
+}
+
+.error {
+    color: #d4351c;
+    background-color: #fd0f20;
+    background-color: rgba(212, 53, 28, 0.1);
+    padding: 15px;
+    border-left: 5px solid #d4351c;
+}

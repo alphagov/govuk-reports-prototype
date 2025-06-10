@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header class="govuk-header">
+        <div class="govuk-header__container">
+            <div class="govuk-header__logo">
+                <span class="govuk-header__logotype-text">GOV.UK</span>
+            </div>
+            <div class="govuk-header__content">
+                <span class="govuk-header__link--service-name">Cost Dashboard</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="govuk-main-wrapper">
+        <div class="govuk-grid-row">
+            <div class="govuk-grid-column-full">
+                <h1 class="govuk-heading-xl">{{.title}}</h1>
+                
+                <div class="govuk-summary-card">
+                    <div class="govuk-summary-card__title-wrapper">
+                        <h2 class="govuk-summary-card__title">AWS Cost Summary</h2>
+                    </div>
+                    <div class="govuk-summary-card__content">
+                        <div id="cost-summary">
+                            <p>Loading cost data...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="govuk-summary-card">
+                    <div class="govuk-summary-card__title-wrapper">
+                        <h2 class="govuk-summary-card__title">Service Breakdown</h2>
+                    </div>
+                    <div class="govuk-summary-card__content">
+                        <div id="service-breakdown">
+                            <p>Loading service data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
