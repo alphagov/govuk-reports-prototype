@@ -1,0 +1,158 @@
+package handlers
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+
+	"govuk-cost-dashboard/internal/models"
+	"govuk-cost-dashboard/internal/services"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
+)
+
+type ApplicationHandler struct {
+	applicationService *services.ApplicationService
+	logger             *logrus.Logger
+}
+
+func NewApplicationHandler(applicationService *services.ApplicationService, logger *logrus.Logger) *ApplicationHandler {
+	return &ApplicationHandler{
+		applicationService: applicationService,
+		logger:             logger,
+	}
+}
+
+// GetApplications handles GET /api/applications
+func (h *ApplicationHandler) GetApplications(c *gin.Context) {
+	h.logger.Info("Handling request for all applications")
+
+	applications, err := h.applicationService.GetAllApplications(c.Request.Context())
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to fetch applications")
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "internal_server_error",
+			Message: "Failed to fetch applications",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	h.logger.WithField("app_count", applications.Count).Info("Successfully fetched applications")
+	c.JSON(http.StatusOK, applications)
+}
+
+// GetApplication handles GET /api/applications/{name}
+func (h *ApplicationHandler) GetApplication(c *gin.Context) {
+	name := c.Param("name")
+	if name == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "bad_request",
+			Message: "Application name is required",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	h.logger.WithField("app_name", name).Info("Handling request for specific application")
+
+	application, err := h.applicationService.GetApplicationByName(c.Request.Context(), name)
+	if err != nil {
+		if strings.Contains(err.Error(), "application not found") {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error:   "not_found",
+				Message: "Application not found",
+				Code:    http.StatusNotFound,
+			})
+			return
+		}
+
+		h.logger.WithError(err).Error("Failed to fetch application")
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "internal_server_error",
+			Message: "Failed to fetch application",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	h.logger.WithField("app_name", name).Info("Successfully fetched application")
+	c.JSON(http.StatusOK, application)
+}
+
+// GetApplicationServices handles GET /api/applications/{name}/services
+func (h *ApplicationHandler) GetApplicationServices(c *gin.Context) {
+	name := c.Param("name")
+	if name == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "bad_request",
+			Message: "Application name is required",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	h.logger.WithField("app_name", name).Info("Handling request for application services")
+
+	services, err := h.applicationService.GetApplicationServices(c.Request.Context(), name)
+	if err != nil {
+		if strings.Contains(err.Error(), "application not found") {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error:   "not_found",
+				Message: "Application not found",
+				Code:    http.StatusNotFound,
+			})
+			return
+		}
+
+		h.logger.WithError(err).Error("Failed to fetch application services")
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "internal_server_error",
+			Message: "Failed to fetch application services",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	response := map[string]interface{}{
+		"application": name,
+		"services":    services,
+		"count":       len(services),
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"app_name":      name,
+		"service_count": len(services),
+	}).Info("Successfully fetched application services")
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetApplicationsPage handles GET / - serves the main dashboard page
+func (h *ApplicationHandler) GetApplicationsPage(c *gin.Context) {
+	h.logger.Info("Serving applications dashboard page")
+	
+	c.HTML(http.StatusOK, "applications.html", gin.H{
+		"title": "GOV.UK Cost Dashboard",
+	})
+}
+
+// GetApplicationPage handles GET /applications/{name} - serves individual application page
+func (h *ApplicationHandler) GetApplicationPage(c *gin.Context) {
+	name := c.Param("name")
+	if name == "" {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"title": "Error",
+			"error": "Application name is required",
+		})
+		return
+	}
+
+	h.logger.WithField("app_name", name).Info("Serving application detail page")
+	
+	c.HTML(http.StatusOK, "application-detail.html", gin.H{
+		"title":           fmt.Sprintf("%s - GOV.UK Cost Dashboard", name),
+		"application_name": name,
+	})
+}

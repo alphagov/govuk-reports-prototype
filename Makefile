@@ -83,6 +83,15 @@ run-with-profile: ## 🔐 Run with AWS profile (set AWS_PROFILE env var)
 	@echo "$(BLUE)🔐 Running with AWS profile: $(AWS_PROFILE)...$(RESET)"
 	@AWS_PROFILE=$(AWS_PROFILE) go run ./cmd/server
 
+.PHONY: demo
+demo: ## 🎭 Run demo with simulated data (no AWS required)
+	@echo "$(BLUE)🎭 Starting demo mode (no AWS credentials required)...$(RESET)"
+	@echo "$(YELLOW)📱 Web Interface: http://localhost:8080$(RESET)"
+	@echo "$(YELLOW)🔌 API Docs: http://localhost:8080/api/applications$(RESET)"
+	@echo "$(YELLOW)🏥 Health Check: http://localhost:8080/api/health$(RESET)"
+	@echo ""
+	@LOG_LEVEL=info go run ./cmd/server
+
 ## 🔧 Development Commands
 .PHONY: deps
 deps: ## 📦 Download and tidy dependencies
@@ -243,13 +252,15 @@ help: ## 📖 Show this help message
 	@echo ""
 	@echo "$(BLUE)🚀 Quick Start:$(RESET)"
 	@echo "  make setup      - Set up development environment"
+	@echo "  make demo       - Run demo (no AWS required!)"
 	@echo "  make run        - Run the application"
 	@echo "  make test       - Run all tests"
 	@echo ""
 	@echo "$(BLUE)💡 Examples:$(RESET)"
-	@echo "  AWS_PROFILE=my-profile make run"
-	@echo "  make test-coverage"
-	@echo "  make docker-build && make docker-run"
+	@echo "  make demo                              # Try it now!"
+	@echo "  AWS_PROFILE=my-profile make run        # With real AWS data"
+	@echo "  make test-coverage                     # Generate coverage"
+	@echo "  make docker-build && make docker-run   # Docker deployment"
 
 ## 🔄 Maintenance
 .PHONY: update-deps

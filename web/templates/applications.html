@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" class="govuk-template">
+<head>
+    <meta charset="utf-8">
+    <title>{{.title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0c0c">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+</head>
+
+<body class="govuk-template__body">
+    <script>document.body.className = ((document.body.className) ? document.body.className + ' js-enabled' : 'js-enabled');</script>
+
+    <header class="govuk-header" role="banner" data-module="govuk-header">
+        <div class="govuk-header__container govuk-width-container">
+            <div class="govuk-header__logo">
+                <a href="/" class="govuk-header__link govuk-header__link--homepage">
+                    <span class="govuk-header__logotype">
+                        <span class="govuk-header__logotype-text">GOV.UK</span>
+                    </span>
+                </a>
+            </div>
+            <div class="govuk-header__content">
+                <a href="/" class="govuk-header__link govuk-header__link--service-name">
+                    Cost Dashboard
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="govuk-width-container">
+        <main class="govuk-main-wrapper" id="main-content" role="main">
+            
+            <!-- Page Header -->
+            <div class="govuk-grid-row">
+                <div class="govuk-grid-column-full">
+                    <h1 class="govuk-heading-xl">GOV.UK Applications Cost Dashboard</h1>
+                    <p class="govuk-body-l">Monitor and analyze AWS costs across all GOV.UK applications</p>
+                </div>
+            </div>
+
+            <!-- Cost Summary Cards -->
+            <div class="govuk-grid-row" id="summary-cards">
+                <div class="govuk-grid-column-one-third">
+                    <div class="cost-summary-card">
+                        <h3 class="govuk-heading-s">Total Monthly Cost</h3>
+                        <p class="cost-amount" id="total-cost">Loading...</p>
+                        <p class="cost-subtitle">Current month</p>
+                    </div>
+                </div>
+                <div class="govuk-grid-column-one-third">
+                    <div class="cost-summary-card">
+                        <h3 class="govuk-heading-s">Applications</h3>
+                        <p class="cost-amount" id="app-count">Loading...</p>
+                        <p class="cost-subtitle">Active applications</p>
+                    </div>
+                </div>
+                <div class="govuk-grid-column-one-third">
+                    <div class="cost-summary-card">
+                        <h3 class="govuk-heading-s">Average Cost</h3>
+                        <p class="cost-amount" id="avg-cost">Loading...</p>
+                        <p class="cost-subtitle">Per application</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search and Filters -->
+            <div class="govuk-grid-row">
+                <div class="govuk-grid-column-full">
+                    <div class="search-filters">
+                        <div class="govuk-form-group">
+                            <label class="govuk-label" for="search-input">
+                                Search applications
+                            </label>
+                            <input class="govuk-input" id="search-input" name="search" type="text" 
+                                   placeholder="Search by name, team, or hosting platform...">
+                        </div>
+                        
+                        <div class="filter-buttons">
+                            <button class="govuk-button govuk-button--secondary" data-filter="all" id="filter-all">
+                                All Applications
+                            </button>
+                            <button class="govuk-button govuk-button--secondary" data-filter="eks" id="filter-eks">
+                                EKS
+                            </button>
+                            <button class="govuk-button govuk-button--secondary" data-filter="heroku" id="filter-heroku">
+                                Heroku
+                            </button>
+                            <button class="govuk-button govuk-button--secondary" data-filter="gcp" id="filter-gcp">
+                                GCP
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="loading-container">
+                <div class="loading-spinner"></div>
+                <p class="govuk-body">Loading applications...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="error-container" style="display: none;">
+                <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert">
+                    <h2 class="govuk-error-summary__title" id="error-summary-title">
+                        There is a problem
+                    </h2>
+                    <div class="govuk-error-summary__body">
+                        <p id="error-message">Failed to load applications. Please try again.</p>
+                        <button class="govuk-button govuk-button--secondary" id="retry-button">
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Applications Table -->
+            <div class="govuk-grid-row" id="applications-container" style="display: none;">
+                <div class="govuk-grid-column-full">
+                    <div class="table-container">
+                        <table class="govuk-table" id="applications-table">
+                            <thead class="govuk-table__head">
+                                <tr class="govuk-table__row">
+                                    <th scope="col" class="govuk-table__header sortable" data-sort="name">
+                                        Application Name
+                                        <span class="sort-arrow"></span>
+                                    </th>
+                                    <th scope="col" class="govuk-table__header">Team</th>
+                                    <th scope="col" class="govuk-table__header">Hosting</th>
+                                    <th scope="col" class="govuk-table__header sortable numeric" data-sort="cost">
+                                        Monthly Cost
+                                        <span class="sort-arrow"></span>
+                                    </th>
+                                    <th scope="col" class="govuk-table__header">Services</th>
+                                    <th scope="col" class="govuk-table__header">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="govuk-table__body" id="applications-tbody">
+                                <!-- Applications will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- No Results State -->
+                    <div id="no-results" class="no-results" style="display: none;">
+                        <h3 class="govuk-heading-m">No applications found</h3>
+                        <p class="govuk-body">Try adjusting your search terms or filters.</p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <footer class="govuk-footer" role="contentinfo">
+        <div class="govuk-width-container">
+            <div class="govuk-footer__meta">
+                <div class="govuk-footer__meta-item govuk-footer__meta-item--grow">
+                    <h2 class="govuk-visually-hidden">Support links</h2>
+                    <ul class="govuk-footer__inline-list">
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="/api/health">API Health</a>
+                        </li>
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="https://github.com/alphagov">GOV.UK on GitHub</a>
+                        </li>
+                    </ul>
+                    <div class="govuk-footer__meta-custom">
+                        Built with ❤️ for GOV.UK
+                    </div>
+                </div>
+                <div class="govuk-footer__meta-item">
+                    <a class="govuk-footer__link govuk-footer__copyright-logo" href="https://www.nationalarchives.gov.uk/information-management/re-using-public-sector-information/uk-government-licensing-framework/crown-copyright/">
+                        © Crown copyright
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

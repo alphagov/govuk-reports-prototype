@@ -32,11 +32,13 @@ func main() {
 	govukClient := govuk.NewClient(cfg, logger)
 
 	costService := services.NewCostService(awsClient, govukClient, logger)
+	applicationService := services.NewApplicationService(awsClient, govukClient, logger)
 
 	healthHandler := handlers.NewHealthHandler()
 	costHandler := handlers.NewCostHandler(costService, logger)
+	applicationHandler := handlers.NewApplicationHandler(applicationService, logger)
 
-	router := setupRouter(cfg, logger, healthHandler, costHandler)
+	router := setupRouter(cfg, logger, healthHandler, costHandler, applicationHandler)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
@@ -88,7 +90,7 @@ func setupLogger(cfg *config.Config) *logrus.Logger {
 	return logger
 }
 
-func setupRouter(cfg *config.Config, logger *logrus.Logger, healthHandler *handlers.HealthHandler, costHandler *handlers.CostHandler) *gin.Engine {
+func setupRouter(cfg *config.Config, logger *logrus.Logger, healthHandler *handlers.HealthHandler, costHandler *handlers.CostHandler, applicationHandler *handlers.ApplicationHandler) *gin.Engine {
 	if cfg.Server.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -100,20 +102,28 @@ func setupRouter(cfg *config.Config, logger *logrus.Logger, healthHandler *handl
 	router.Use(handlers.ErrorHandler())
 	router.Use(gin.Recovery())
 
-	v1 := router.Group("/api/v1")
+	// API routes
+	api := router.Group("/api")
 	{
-		v1.GET("/health", healthHandler.HealthCheck)
-		v1.GET("/costs", costHandler.GetCostSummary)
+		// Health endpoint (keep at /api/health for backward compatibility)
+		api.GET("/health", healthHandler.HealthCheck)
+		
+		// Application endpoints
+		api.GET("/applications", applicationHandler.GetApplications)
+		api.GET("/applications/:name", applicationHandler.GetApplication)
+		api.GET("/applications/:name/services", applicationHandler.GetApplicationServices)
+		
+		// Legacy cost endpoint
+		api.GET("/costs", costHandler.GetCostSummary)
 	}
 
+	// Static files
 	router.Static("/static", "./web/static")
 	router.LoadHTMLGlob("web/templates/*")
 
-	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{
-			"title": "GOV.UK Cost Dashboard",
-		})
-	})
+	// Web pages
+	router.GET("/", applicationHandler.GetApplicationsPage)
+	router.GET("/applications/:name", applicationHandler.GetApplicationPage)
 
 	return router
 }

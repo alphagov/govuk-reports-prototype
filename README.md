@@ -186,12 +186,29 @@ docker run -p 8080:8080 \
 
 ## 🌐 API Endpoints
 
+### 📊 Web Interface
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | 🎨 Applications dashboard with search/filter |
+| `/applications/{name}` | GET | 📱 Application detail page with cost breakdown |
+
+### 🔌 REST API  
 | Endpoint | Method | Description | Example |
 |----------|--------|-------------|---------|
-| `/` | GET | 🎨 Web dashboard interface | `curl http://localhost:8080/` |
-| `/api/v1/health` | GET | 🏥 Health check endpoint | `curl http://localhost:8080/api/v1/health` |
-| `/api/v1/costs` | GET | 💰 Cost summary data | `curl http://localhost:8080/api/v1/costs` |
-| `/static/*` | GET | 📁 Static assets (CSS/JS) | `curl http://localhost:8080/static/css/styles.css` |
+| `/api/health` | GET | 🏥 Health check endpoint | `curl http://localhost:8080/api/health` |
+| `/api/applications` | GET | 📋 List all applications with costs | `curl http://localhost:8080/api/applications` |
+| `/api/applications/{name}` | GET | 🔍 Get specific application details | `curl http://localhost:8080/api/applications/publishing-api` |
+| `/api/applications/{name}/services` | GET | ⚙️ Get application service breakdown | `curl http://localhost:8080/api/applications/publishing-api/services` |
+| `/api/costs` | GET | 💰 Legacy cost summary endpoint | `curl http://localhost:8080/api/costs` |
+| `/static/*` | GET | 📁 Static assets (CSS/JS) | `curl http://localhost:8080/static/css/dashboard.css` |
+
+### 🎨 Web Features
+- **🔍 Search & Filter**: Real-time search by name, team, or hosting platform  
+- **📊 Sortable Tables**: Click column headers to sort by name or cost
+- **📱 Mobile Responsive**: Optimized for all device sizes
+- **⚡ Loading States**: Smooth loading indicators and error handling
+- **🎯 Cost Visualization**: Interactive charts showing service cost distribution
+- **🔗 Deep Linking**: Direct links to application details and external resources
 
 ## 🛠️ Development
 

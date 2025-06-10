@@ -1,0 +1,3 @@
+# Favicon Placeholder
+# In a real deployment, replace this with an actual favicon.ico file
+# For now, the browser will just use a default icon
