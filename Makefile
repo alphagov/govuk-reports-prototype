@@ -203,9 +203,14 @@ env-example: ## 📝 Create example environment file
 	@echo "" >> .env.example
 	@echo "# Server Configuration" >> .env.example
 	@echo "PORT=8080" >> .env.example
+	@echo "# HOST=localhost" >> .env.example
 	@echo "ENVIRONMENT=development" >> .env.example
 	@echo "READ_TIMEOUT=30" >> .env.example
 	@echo "WRITE_TIMEOUT=30" >> .env.example
+	@echo "IDLE_TIMEOUT=120" >> .env.example
+	@echo "# TLS_ENABLED=false" >> .env.example
+	@echo "# TLS_CERT_FILE=/path/to/cert.pem" >> .env.example
+	@echo "# TLS_KEY_FILE=/path/to/key.pem" >> .env.example
 	@echo "" >> .env.example
 	@echo "# AWS Configuration" >> .env.example
 	@echo "AWS_REGION=eu-west-2" >> .env.example
@@ -214,6 +219,9 @@ env-example: ## 📝 Create example environment file
 	@echo "# AWS_SECRET_ACCESS_KEY=your_secret_key" >> .env.example
 	@echo "# AWS_SESSION_TOKEN=your_session_token" >> .env.example
 	@echo "# AWS_MFA_TOKEN=123456" >> .env.example
+	@echo "AWS_COST_EXPLORER_REGION=us-east-1" >> .env.example
+	@echo "AWS_MAX_RETRIES=3" >> .env.example
+	@echo "AWS_RETRY_DELAY=1s" >> .env.example
 	@echo "" >> .env.example
 	@echo "# GOV.UK Configuration" >> .env.example
 	@echo "GOVUK_API_BASE_URL=https://www.gov.uk/api" >> .env.example
@@ -221,10 +229,26 @@ env-example: ## 📝 Create example environment file
 	@echo "GOVUK_APPS_API_TIMEOUT=30s" >> .env.example
 	@echo "GOVUK_APPS_API_CACHE_TTL=15m" >> .env.example
 	@echo "GOVUK_APPS_API_RETRIES=3" >> .env.example
+	@echo "GOVUK_RATE_LIMIT=100" >> .env.example
+	@echo "GOVUK_USER_AGENT=GOV.UK-Cost-Dashboard/1.0" >> .env.example
 	@echo "" >> .env.example
 	@echo "# Logging Configuration" >> .env.example
 	@echo "LOG_LEVEL=info" >> .env.example
 	@echo "LOG_FORMAT=json" >> .env.example
+	@echo "LOG_OUTPUT=stdout" >> .env.example
+	@echo "" >> .env.example
+	@echo "# Cache Configuration" >> .env.example
+	@echo "CACHE_DEFAULT_TTL=10m" >> .env.example
+	@echo "CACHE_CLEANUP_PERIOD=5m" >> .env.example
+	@echo "CACHE_MAX_SIZE=1000" >> .env.example
+	@echo "CACHE_EVICTION_POLICY=LRU" >> .env.example
+	@echo "" >> .env.example
+	@echo "# Monitoring Configuration" >> .env.example
+	@echo "METRICS_ENABLED=true" >> .env.example
+	@echo "METRICS_PORT=9090" >> .env.example
+	@echo "HEALTH_PATH=/api/health" >> .env.example
+	@echo "READYZ_PATH=/api/readyz" >> .env.example
+	@echo "LIVEZ_PATH=/api/livez" >> .env.example
 	@echo "$(GREEN)✅ Created .env.example$(RESET)"
 	@echo "$(YELLOW)💡 Copy to .env and customize: cp .env.example .env$(RESET)"
 

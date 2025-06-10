@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,7 +20,11 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
+		os.Exit(1)
+	}
 	logger := setupLogger(cfg)
 
 	logger.Info("Starting GOV.UK Cost Dashboard")
@@ -41,10 +46,11 @@ func main() {
 	router := setupRouter(cfg, logger, healthHandler, costHandler, applicationHandler)
 
 	srv := &http.Server{
-		Addr:         ":" + cfg.Server.Port,
+		Addr:         cfg.GetBindAddress(),
 		Handler:      router,
 		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
+		IdleTimeout:  time.Duration(cfg.Server.IdleTimeout) * time.Second,
 	}
 
 	go func() {
@@ -97,9 +103,33 @@ func setupRouter(cfg *config.Config, logger *logrus.Logger, healthHandler *handl
 
 	router := gin.New()
 
+	// Request timeout middleware
+	router.Use(handlers.TimeoutMiddleware(30*time.Second, logger))
+	
+	// Security headers
+	router.Use(handlers.SecurityHeadersMiddleware())
+	
+	// CORS with configuration
+	router.Use(handlers.CORSMiddleware(cfg))
+	
+	// Rate limiting and bot detection
+	router.Use(handlers.RateLimitMiddleware(logger))
+	
+	// Structured logging
 	router.Use(handlers.LoggerMiddleware(logger))
-	router.Use(handlers.CORSMiddleware())
-	router.Use(handlers.ErrorHandler())
+	
+	// Metrics collection
+	if cfg.Monitoring.MetricsEnabled {
+		router.Use(handlers.MetricsMiddleware(logger))
+	}
+	
+	// Health check middleware for circuit breaker
+	router.Use(handlers.HealthCheckMiddleware(logger))
+	
+	// Error handling with panic recovery
+	router.Use(handlers.ErrorHandler(logger))
+	
+	// Gin's built-in recovery (backup)
 	router.Use(gin.Recovery())
 
 	// API routes
