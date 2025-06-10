@@ -4,6 +4,8 @@
 *.dll
 *.so
 *.dylib
+govuk_example
+server
 bin/*
 
 # Test binary, built with `go test -c`
@@ -17,3 +19,4 @@ completions
 
 # Go test output
 coverage.out
+
