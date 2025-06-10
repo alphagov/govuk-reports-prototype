@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"time"
 )
 
 type Config struct {
@@ -24,11 +25,16 @@ type AWSConfig struct {
 	AccessKeyID     string
 	SecretAccessKey string
 	SessionToken    string
+	Profile         string
+	MFAToken        string
 }
 
 type GOVUKConfig struct {
-	APIBaseURL string
-	APIKey     string
+	APIBaseURL      string
+	APIKey          string
+	AppsAPITimeout  time.Duration
+	AppsAPICacheTTL time.Duration
+	AppsAPIRetries  int
 }
 
 type LogConfig struct {
@@ -49,10 +55,15 @@ func Load() *Config {
 			AccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", ""),
 			SecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", ""),
 			SessionToken:    getEnv("AWS_SESSION_TOKEN", ""),
+			Profile:         getEnv("AWS_PROFILE", ""),
+			MFAToken:        getEnv("AWS_MFA_TOKEN", ""),
 		},
 		GOVUK: GOVUKConfig{
-			APIBaseURL: getEnv("GOVUK_API_BASE_URL", "https://www.gov.uk/api"),
-			APIKey:     getEnv("GOVUK_API_KEY", ""),
+			APIBaseURL:      getEnv("GOVUK_API_BASE_URL", "https://www.gov.uk/api"),
+			APIKey:          getEnv("GOVUK_API_KEY", ""),
+			AppsAPITimeout:  getEnvAsDuration("GOVUK_APPS_API_TIMEOUT", 30*time.Second),
+			AppsAPICacheTTL: getEnvAsDuration("GOVUK_APPS_API_CACHE_TTL", 15*time.Minute),
+			AppsAPIRetries:  getEnvAsInt("GOVUK_APPS_API_RETRIES", 3),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
@@ -71,6 +82,14 @@ func getEnv(key, defaultVal string) string {
 func getEnvAsInt(key string, defaultVal int) int {
 	valueStr := getEnv(key, "")
 	if value, err := strconv.Atoi(valueStr); err == nil {
+		return value
+	}
+	return defaultVal
+}
+
+func getEnvAsDuration(key string, defaultVal time.Duration) time.Duration {
+	valueStr := getEnv(key, "")
+	if value, err := time.ParseDuration(valueStr); err == nil {
 		return value
 	}
 	return defaultVal

@@ -1,7 +1,12 @@
 package aws
 
 import (
+	"bufio"
 	"context"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"govuk-cost-dashboard/internal/config"
@@ -9,6 +14,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer"
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer/types"
 	"github.com/sirupsen/logrus"
@@ -19,10 +25,57 @@ type Client struct {
 	logger       *logrus.Logger
 }
 
+// mfaTokenProvider prompts for MFA token input or reads from environment
+func mfaTokenProvider() (string, error) {
+	// First check if MFA token is provided via environment variable
+	if token := os.Getenv("AWS_MFA_TOKEN"); token != "" {
+		return token, nil
+	}
+
+	// If not in environment, prompt user for input
+	fmt.Print("Enter MFA token: ")
+	reader := bufio.NewReader(os.Stdin)
+	token, err := reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(token), nil
+}
+
 func NewClient(cfg *config.Config, logger *logrus.Logger) (*Client, error) {
-	awsCfg, err := awsconfig.LoadDefaultConfig(context.TODO(),
-		awsconfig.WithRegion(cfg.AWS.Region),
-	)
+	var configOptions []func(*awsconfig.LoadOptions) error
+	
+	// Set region
+	configOptions = append(configOptions, awsconfig.WithRegion(cfg.AWS.Region))
+	
+	// Configure MFA token provider for assume role operations
+	configOptions = append(configOptions, awsconfig.WithAssumeRoleCredentialOptions(func(options *stscreds.AssumeRoleOptions) {
+		options.TokenProvider = mfaTokenProvider
+	}))
+	
+	// Use AWS profile if specified
+	if cfg.AWS.Profile != "" {
+		logger.WithField("profile", cfg.AWS.Profile).Info("Using AWS profile")
+		configOptions = append(configOptions, awsconfig.WithSharedConfigProfile(cfg.AWS.Profile))
+	}
+	
+	// If explicit credentials are provided, use them
+	if cfg.AWS.AccessKeyID != "" && cfg.AWS.SecretAccessKey != "" {
+		logger.Info("Using explicit AWS credentials")
+		credentials := aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
+			return aws.Credentials{
+				AccessKeyID:     cfg.AWS.AccessKeyID,
+				SecretAccessKey: cfg.AWS.SecretAccessKey,
+				SessionToken:    cfg.AWS.SessionToken,
+				Source:          "Environment",
+			}, nil
+		})
+		configOptions = append(configOptions, awsconfig.WithCredentialsProvider(credentials))
+	} else {
+		logger.Info("Using AWS default credential chain (profile, environment, EC2 role)")
+	}
+
+	awsCfg, err := awsconfig.LoadDefaultConfig(context.TODO(), configOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +99,7 @@ func (c *Client) GetCostData() ([]models.CostData, error) {
 		Metrics:     []string{"BlendedCost"},
 		GroupBy: []types.GroupDefinition{
 			{
-				Type: types.GroupDefinitionTypeKey,
+				Type: types.GroupDefinitionTypeDimension,
 				Key:  aws.String("SERVICE"),
 			},
 		},
@@ -85,12 +138,14 @@ func (c *Client) GetCostData() ([]models.CostData, error) {
 }
 
 func parseFloat(s string) float64 {
-	// Simple float parsing - in production, handle errors properly
 	if s == "" {
 		return 0.0
 	}
-	// This is a simplified version - use strconv.ParseFloat in production
-	return 0.0
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0.0
+	}
+	return f
 }
 
 func parseDate(s string) time.Time {

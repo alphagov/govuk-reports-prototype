@@ -40,9 +40,11 @@ The application uses environment variables for configuration:
 
 ### AWS Configuration
 - `AWS_REGION` - AWS region (default: eu-west-2)
-- `AWS_ACCESS_KEY_ID` - AWS access key
-- `AWS_SECRET_ACCESS_KEY` - AWS secret key
+- `AWS_PROFILE` - AWS profile name to use from ~/.aws/credentials
+- `AWS_ACCESS_KEY_ID` - AWS access key (alternative to profile)
+- `AWS_SECRET_ACCESS_KEY` - AWS secret key (alternative to profile)
 - `AWS_SESSION_TOKEN` - AWS session token (optional)
+- `AWS_MFA_TOKEN` - MFA token for assume role operations (optional)
 
 ### GOV.UK Configuration
 - `GOVUK_API_BASE_URL` - GOV.UK API base URL
@@ -56,8 +58,46 @@ The application uses environment variables for configuration:
 
 ### Prerequisites
 - Go 1.21 or later
-- AWS credentials configured
+- AWS credentials configured (see AWS Configuration section)
 - Docker (optional)
+
+### AWS Credential Setup
+
+The application supports multiple ways to configure AWS credentials:
+
+#### Option 1: AWS Profile (Recommended)
+```bash
+# Set the profile name
+export AWS_PROFILE=your-profile-name
+
+# Or create/update ~/.aws/credentials file:
+[your-profile-name]
+aws_access_key_id = YOUR_ACCESS_KEY
+aws_secret_access_key = YOUR_SECRET_KEY
+region = eu-west-2
+```
+
+#### Option 2: Environment Variables
+```bash
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+export AWS_REGION=eu-west-2
+```
+
+#### Option 3: EC2 Instance Role (for production)
+When running on EC2, the application will automatically use the instance role.
+
+#### MFA Support
+If your AWS profile requires MFA, the application supports it in two ways:
+
+**Interactive MFA (for development):**
+The application will prompt you for the MFA token when needed.
+
+**Non-interactive MFA (for automation):**
+```bash
+export AWS_MFA_TOKEN=123456
+AWS_PROFILE=your-profile-name go run cmd/server/main.go
+```
 
 ### Local Development
 
@@ -66,8 +106,9 @@ The application uses environment variables for configuration:
    ```bash
    go mod tidy
    ```
-3. Set environment variables (create a `.env` file or export them)
-4. Run the application:
+3. Configure AWS credentials (see AWS Credential Setup above)
+4. Set environment variables (create a `.env` file or export them)
+5. Run the application:
    ```bash
    go run cmd/server/main.go
    ```
