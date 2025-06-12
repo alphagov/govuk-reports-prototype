@@ -1,6 +1,6 @@
-# 🏛️ GOV.UK AWS Cost Dashboard
+# 🏛️ GOV.UK Web, Publishing and Platform Cost Dashboard
 
-A powerful Golang web application for monitoring and displaying AWS costs for GOV.UK services with beautiful dashboards and comprehensive API integration.
+A Go web application for monitoring and displaying hosting costs for GOV.UK Web, Publishing and Platform services with dashboards and API integration.
 
 ![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)
 ![License](https://img.shields.io/badge/License-Crown%20Copyright-gold.svg)
@@ -84,9 +84,6 @@ export AWS_SECRET_ACCESS_KEY=your_secret_key
 export AWS_REGION=eu-west-2
 ```
 
-#### Option 3: EC2 Instance Role (for production)
-When running on EC2, the application will automatically use the instance role.
-
 #### MFA Support
 If your AWS profile requires MFA, the application supports it in two ways:
 
@@ -117,8 +114,6 @@ AWS_PROFILE=your-profile make run
 ```
 
 ### 🛠️ Development Commands
-
-We provide a comprehensive Makefile with all common tasks:
 
 ```bash
 # 🚀 Running
@@ -194,37 +189,7 @@ docker run -p 8080:8080 \
 | `/api/costs` | GET | 💰 Legacy cost summary endpoint | `curl http://localhost:8080/api/costs` |
 | `/static/*` | GET | 📁 Static assets (CSS/JS) | `curl http://localhost:8080/static/css/dashboard.css` |
 
-### 🎨 Web Features
-- **🔍 Search & Filter**: Real-time search by name, team, or hosting platform  
-- **📊 Sortable Tables**: Click column headers to sort by name or cost
-- **📱 Mobile Responsive**: Optimized for all device sizes
-- **⚡ Loading States**: Smooth loading indicators and error handling
-- **🎯 Cost Visualization**: Interactive charts showing service cost distribution
-- **🔗 Deep Linking**: Direct links to application details and external resources
-
 ## 🛠️ Development
-
-### 📁 Project Structure
-
-The project follows Go best practices with clear separation of concerns:
-
-```
-govuk-cost-dashboard/
-├── 📁 cmd/server/          # 🚀 Application entry point
-├── 📁 internal/            # 🔒 Private application code
-│   ├── config/            # ⚙️  Configuration management  
-│   ├── handlers/          # 🌐 HTTP handlers & middleware
-│   ├── models/            # 📊 Data structures
-│   └── services/          # 🔧 Business logic
-├── 📁 pkg/                # 📦 Public library code
-│   ├── aws/               # ☁️  AWS client
-│   └── govuk/             # 🏛️  GOV.UK API client
-├── 📁 web/                # 🎨 Web assets
-│   ├── static/            # 📄 CSS/JS files
-│   └── templates/         # 📝 HTML templates
-├── 📁 examples/           # 📚 Usage examples
-└── 🐳 Dockerfile          # Docker configuration
-```
 
 ### 🔧 Adding New Features
 
@@ -262,16 +227,6 @@ make build-all
 # Clean build artifacts
 make clean
 ```
-
-## 🔒 Security Considerations
-
-- 🛡️ **Container Security**: Application runs as non-root user in Docker
-- 🌐 **CORS Protection**: Configurable CORS middleware
-- 🕵️ **Information Leakage**: Error handling middleware prevents sensitive data exposure
-- 📋 **Audit Trails**: Comprehensive structured logging for security monitoring
-- 🔐 **MFA Support**: Full AWS Multi-Factor Authentication integration
-- 🔑 **Credential Management**: Multiple secure credential provider options
-
 ## 📊 Quality Assurance
 
 Run comprehensive quality checks:
@@ -288,14 +243,6 @@ make pre-commit
 
 # Security scanning (requires gosec)
 make security
-```
-
-## 📈 Project Statistics
-
-Want to see some fun stats about the project?
-
-```bash
-make stats
 ```
 
 ## 🤝 Contributing
@@ -342,7 +289,6 @@ go test -v ./pkg/govuk
 
 - 📖 **Commands**: Run `make help` for all available commands
 - 🐹 **Fun**: Run `make gopher` for motivation
-- 📊 **Stats**: Run `make stats` for project information
 - 📚 **Docs**: Run `make docs` to generate documentation
 
 ## 📜 License
@@ -352,11 +298,3 @@ go test -v ./pkg/govuk
 This project is licensed under the Crown Copyright. See the LICENSE file for details.
 
 ---
-
-<div align="center">
-
-**🏛️ Built with ❤️ for GOV.UK**
-
-Made with Go • Powered by AWS • Designed for Excellence
-
-</div>
