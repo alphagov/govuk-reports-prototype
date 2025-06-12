@@ -8,16 +8,8 @@ A powerful Golang web application for monitoring and displaying AWS costs for GO
 
 ## ✨ Features
 
-- 💰 **AWS Cost Tracking**: Real-time integration with AWS Cost Explorer API
-- 🏛️ **GOV.UK Apps Integration**: Comprehensive GOV.UK applications API client
-- 🎨 **Beautiful Dashboard**: Clean, accessible interface following GOV.UK Design System
-- 🔒 **MFA Support**: Full AWS Multi-Factor Authentication support
-- 📊 **Health Monitoring**: Built-in health check endpoints with detailed status
-- 📝 **Structured Logging**: JSON logging with configurable levels and debugging
-- 🛡️ **Graceful Shutdown**: Proper signal handling and resource cleanup
-- 🐳 **Docker Ready**: Multi-stage Docker builds with security best practices
-- ⚡ **Caching**: Intelligent in-memory caching with configurable TTL
-- 🔄 **Retry Logic**: Robust HTTP clients with exponential backoff
+- Real-time integration with AWS Cost Explorer API
+- Grouped by application/service hosted on the GOV.UK Platform.
 
 ## Architecture
 
