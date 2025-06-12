@@ -1,5 +1,7 @@
 # 🏛️ GOV.UK Web, Publishing and Platform Cost Dashboard
 
+> Not yet ready for production. This application is a proof of concept.
+
 A Go web application for monitoring and displaying hosting costs for GOV.UK Web, Publishing and Platform services with dashboards and API integration.
 
 ![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)
