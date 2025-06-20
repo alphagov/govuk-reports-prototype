@@ -1,4 +1,4 @@
-module govuk-cost-dashboard
+module govuk-reports-dashboard
 
 go 1.21
 

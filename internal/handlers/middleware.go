@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"govuk-cost-dashboard/internal/config"
-	"govuk-cost-dashboard/internal/models"
-	"govuk-cost-dashboard/pkg/logger"
+	"govuk-reports-dashboard/internal/config"
+	"govuk-reports-dashboard/internal/models"
+	"govuk-reports-dashboard/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )

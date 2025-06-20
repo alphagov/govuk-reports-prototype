@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"govuk-cost-dashboard/pkg/govuk"
+	"govuk-reports-dashboard/pkg/govuk"
 )
 
 // ApplicationCost represents an application with its associated costs
@@ -25,6 +25,8 @@ type ApplicationSummary struct {
 	Currency           string    `json:"currency"`
 	ServiceCount       int       `json:"service_count"`
 	LastUpdated        time.Time `json:"last_updated"`
+	CostSource         string    `json:"cost_source"`         // "real_aws_tags", "service_name_match", "estimation"
+	CostConfidence     string    `json:"cost_confidence"`     // "high", "medium", "low", "none"
 	Links              Links     `json:"links"`
 }
 

@@ -1,4 +1,4 @@
-// GOV.UK Cost Dashboard JavaScript
+// GOV.UK Reports Dashboard JavaScript
 // Handles search, filtering, sorting, and data loading
 
 class CostDashboard {

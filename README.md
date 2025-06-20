@@ -1,8 +1,8 @@
-# 🏛️ GOV.UK Web, Publishing and Platform Cost Dashboard
+# 🏛️ GOV.UK Web, Publishing and Platform Reports Dashboard
 
 > Not yet ready for production. This application is a proof of concept.
 
-A Go web application for monitoring and displaying hosting costs for GOV.UK Web, Publishing and Platform services with dashboards and API integration.
+A Go web application for monitoring and displaying reports for GOV.UK Web, Publishing and Platform services with dashboards and API integration.
 
 ![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)
 ![License](https://img.shields.io/badge/License-Crown%20Copyright-gold.svg)
@@ -166,11 +166,11 @@ make docker-run
 
 Or manually:
 ```bash
-docker build -t govuk-cost-dashboard .
+docker build -t govuk-reports-dashboard .
 docker run -p 8080:8080 \
   -e AWS_REGION=eu-west-2 \
   -e AWS_PROFILE=your-profile \
-  govuk-cost-dashboard
+  govuk-reports-dashboard
 ```
 
 ## 🌐 API Endpoints

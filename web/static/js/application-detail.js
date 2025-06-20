@@ -81,7 +81,7 @@ class ApplicationDetail {
         const app = this.applicationData;
 
         // Update page title
-        document.title = `${app.name} - GOV.UK Cost Dashboard`;
+        document.title = `${app.name} - GOV.UK Reports Dashboard`;
         
         // Update breadcrumb
         const breadcrumbAppName = document.getElementById('breadcrumb-app-name');

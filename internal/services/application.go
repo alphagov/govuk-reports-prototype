@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"govuk-cost-dashboard/internal/models"
-	"govuk-cost-dashboard/pkg/aws"
-	"govuk-cost-dashboard/pkg/govuk"
+	"govuk-reports-dashboard/internal/models"
+	"govuk-reports-dashboard/pkg/aws"
+	"govuk-reports-dashboard/pkg/govuk"
 
-	"govuk-cost-dashboard/pkg/logger"
+	"govuk-reports-dashboard/pkg/logger"
 )
 
 type ApplicationService struct {
@@ -49,19 +49,21 @@ func (s *ApplicationService) GetAllApplications(ctx context.Context) (*models.Ap
 	var totalCost float64
 
 	for _, app := range apps {
-		// Calculate cost for this application (simplified mapping)
-		appCost := s.calculateApplicationCost(app, costData)
-		totalCost += appCost
+		// Calculate cost for this application with metadata
+		costResult := s.calculateApplicationCost(app, costData)
+		totalCost += costResult.Cost
 
 		summary := models.ApplicationSummary{
 			Name:               app.AppName,
 			Shortname:          app.Shortname,
 			Team:               app.Team,
 			ProductionHostedOn: app.ProductionHostedOn,
-			TotalCost:          appCost,
+			TotalCost:          costResult.Cost,
 			Currency:           "GBP",
 			ServiceCount:       s.estimateServiceCount(app),
 			LastUpdated:        time.Now(),
+			CostSource:         costResult.Source,
+			CostConfidence:     costResult.Confidence,
 			Links: models.Links{
 				Self:      app.Links.Self,
 				HTMLURL:   app.Links.HTMLURL,
@@ -106,12 +108,11 @@ func (s *ApplicationService) GetApplicationByName(ctx context.Context, name stri
 		costData = s.generateSimulatedCosts([]govuk.Application{*app})
 	}
 
+	// Calculate cost with metadata
+	costResult := s.calculateApplicationCost(*app, costData)
+	
 	// Generate service breakdown
-	services := s.generateServiceBreakdown(*app, costData)
-	totalCost := 0.0
-	for _, service := range services {
-		totalCost += service.Cost
-	}
+	services := s.generateServiceBreakdown(*app, costData, costResult)
 
 	detail := &models.ApplicationDetail{
 		ApplicationSummary: models.ApplicationSummary{
@@ -119,10 +120,12 @@ func (s *ApplicationService) GetApplicationByName(ctx context.Context, name stri
 			Shortname:          app.Shortname,
 			Team:               app.Team,
 			ProductionHostedOn: app.ProductionHostedOn,
-			TotalCost:          totalCost,
+			TotalCost:          costResult.Cost,
 			Currency:           "GBP",
 			ServiceCount:       len(services),
 			LastUpdated:        time.Now(),
+			CostSource:         costResult.Source,
+			CostConfidence:     costResult.Confidence,
 			Links: models.Links{
 				Self:      app.Links.Self,
 				HTMLURL:   app.Links.HTMLURL,
@@ -153,20 +156,209 @@ func (s *ApplicationService) GetApplicationServices(ctx context.Context, name st
 		costData = s.generateSimulatedCosts([]govuk.Application{*app})
 	}
 
-	services := s.generateServiceBreakdown(*app, costData)
+	// Calculate cost with metadata
+	costResult := s.calculateApplicationCost(*app, costData)
+	
+	services := s.generateServiceBreakdown(*app, costData, costResult)
 	return services, nil
 }
 
 // Helper functions
 
-func (s *ApplicationService) calculateApplicationCost(app govuk.Application, costData []models.CostData) float64 {
-	// Try to find exact cost match from AWS data first
+// tryGetRealTagBasedCost attempts to get real cost data using AWS tags
+func (s *ApplicationService) tryGetRealTagBasedCost(app govuk.Application) (float64, string) {
+	// Map GOV.UK app name to system tag format
+	systemTagName := s.mapAppNameToSystemTag(app)
+	
+	s.logger.WithFields(map[string]interface{}{
+		"app":             app.AppName,
+		"shortname":       app.Shortname,
+		"mapped_tag":      systemTagName,
+	}).Debug().Msg("Attempting to get real tag-based cost")
+	
+	// Try to get cost data for this specific application tag
+	tagCostData, err := s.awsClient.GetCostDataForApplication(systemTagName)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"app":       app.AppName,
+			"tag":       systemTagName,
+			"error":     err.Error(),
+		}).Debug().Msg("Failed to get tag-based cost data")
+		return 0, "none"
+	}
+	
+	if len(tagCostData) == 0 {
+		s.logger.WithFields(map[string]interface{}{
+			"app": app.AppName,
+			"tag": systemTagName,
+		}).Debug().Msg("No cost data found for application tag")
+		return 0, "none"
+	}
+	
+	// Sum up all costs for this application
+	totalCost := 0.0
+	for _, costItem := range tagCostData {
+		totalCost += costItem.Amount
+	}
+	
+	// Determine confidence based on data quality
+	confidence := s.determineCostConfidence(tagCostData, app)
+	
+	s.logger.WithFields(map[string]interface{}{
+		"app":             app.AppName,
+		"tag":             systemTagName,
+		"total_cost":      totalCost,
+		"cost_items":      len(tagCostData),
+		"confidence":      confidence,
+	}).Debug().Msg("Successfully retrieved tag-based cost data")
+	
+	return totalCost, confidence
+}
+
+// mapAppNameToSystemTag maps GOV.UK application names to system tag values
+func (s *ApplicationService) mapAppNameToSystemTag(app govuk.Application) string {
+	// Try multiple mapping strategies to find the best match
+	
+	// Primary strategy: use shortname if available (most reliable)
+	if app.Shortname != "" {
+		return app.Shortname
+	}
+	
+	// Secondary strategy: convert AppName to lowercase with hyphens
+	appName := strings.ToLower(app.AppName)
+	appName = strings.ReplaceAll(appName, " ", "-")
+	appName = strings.ReplaceAll(appName, "_", "-")
+	
+	// Common transformations for GOV.UK app names
+	mappings := map[string]string{
+		"publishing-api":           "publishing-api",
+		"content-store":           "content-store", 
+		"frontend":                "frontend",
+		"government-frontend":     "government-frontend",
+		"collections":             "collections",
+		"finder-frontend":         "finder-frontend",
+		"whitehall":              "whitehall",
+		"specialist-publisher":    "specialist-publisher",
+		"manuals-publisher":       "manuals-publisher",
+		"travel-advice-publisher": "travel-advice-publisher",
+		"publisher":               "publisher",
+		"short-url-manager":       "short-url-manager",
+		"signon":                  "signon",
+		"router":                  "router",
+		"router-api":              "router-api",
+		"content-data-api":        "content-data-api",
+		"content-data-admin":      "content-data-admin",
+		"search-api":              "search-api",
+		"search-admin":            "search-admin",
+		"email-alert-api":         "email-alert-api",
+		"email-alert-frontend":    "email-alert-frontend",
+		"static":                  "static",
+		"smart-answers":           "smart-answers",
+		"calculators":             "calculators",
+		"service-manual-frontend": "service-manual-frontend",
+		"service-manual-publisher": "service-manual-publisher",
+	}
+	
+	// Check if we have a specific mapping
+	if mapped, exists := mappings[appName]; exists {
+		return mapped
+	}
+	
+	// Default: return the transformed app name
+	return appName
+}
+
+// determineCostConfidence assesses the reliability of cost data
+func (s *ApplicationService) determineCostConfidence(costData []models.CostData, app govuk.Application) string {
+	if len(costData) == 0 {
+		return "none"
+	}
+	
+	// Check data recency
+	now := time.Now()
+	hasRecentData := false
+	totalCost := 0.0
+	
+	for _, item := range costData {
+		totalCost += item.Amount
+		// Data from within the last 2 months is considered recent
+		if item.EndDate.After(now.AddDate(0, -2, 0)) {
+			hasRecentData = true
+		}
+	}
+	
+	// Determine confidence based on multiple factors
+	if !hasRecentData {
+		return "low" // Old data
+	}
+	
+	if totalCost == 0 {
+		return "low" // No actual costs
+	}
+	
+	if len(costData) >= 3 && totalCost > 10 { // Multiple cost entries with reasonable total
+		return "high"
+	}
+	
+	if len(costData) >= 1 && totalCost > 1 { // At least some cost data
+		return "medium"  
+	}
+	
+	return "low"
+}
+
+// CostCalculationResult holds both cost and metadata about how it was calculated
+type CostCalculationResult struct {
+	Cost       float64
+	Source     string  // "real_aws_tags", "service_name_match", "estimation"
+	Confidence string  // "high", "medium", "low", "none"
+}
+
+func (s *ApplicationService) calculateApplicationCost(app govuk.Application, costData []models.CostData) CostCalculationResult {
+	// First, try to get real tag-based cost data from AWS
+	if realCost, confidence := s.tryGetRealTagBasedCost(app); realCost > 0 {
+		s.logger.WithFields(map[string]interface{}{
+			"app":        app.AppName,
+			"cost":       realCost,
+			"confidence": confidence,
+			"source":     "real_aws_tags",
+		}).Info().Msg("Using real tag-based cost data")
+		return CostCalculationResult{
+			Cost:       realCost,
+			Source:     "real_aws_tags",
+			Confidence: confidence,
+		}
+	}
+
+	// Try to find exact cost match from existing AWS data
 	if exactCost := s.findExactCostMatch(app, costData); exactCost > 0 {
-		return exactCost
+		s.logger.WithFields(map[string]interface{}{
+			"app":        app.AppName,
+			"cost":       exactCost,
+			"confidence": "medium",
+			"source":     "service_name_match",
+		}).Info().Msg("Using service name matched cost data")
+		return CostCalculationResult{
+			Cost:       exactCost,
+			Source:     "service_name_match",
+			Confidence: "medium",
+		}
 	}
 
 	// Fall back to intelligent estimation
-	return s.estimateApplicationCost(app, costData)
+	estimatedCost := s.estimateApplicationCost(app, costData)
+	s.logger.WithFields(map[string]interface{}{
+		"app":        app.AppName,
+		"cost":       estimatedCost,
+		"confidence": "low",
+		"source":     "estimation",
+	}).Info().Msg("Using estimated cost data")
+	
+	return CostCalculationResult{
+		Cost:       estimatedCost,
+		Source:     "estimation",
+		Confidence: "low",
+	}
 }
 
 // findExactCostMatch attempts to find direct cost attribution
@@ -367,7 +559,7 @@ func (s *ApplicationService) estimateServiceCount(app govuk.Application) int {
 	}
 }
 
-func (s *ApplicationService) generateServiceBreakdown(app govuk.Application, costData []models.CostData) []models.ServiceCost {
+func (s *ApplicationService) generateServiceBreakdown(app govuk.Application, costData []models.CostData, appCostResult CostCalculationResult) []models.ServiceCost {
 	// Common AWS services used by GOV.UK applications
 	serviceNames := []string{
 		"Amazon EC2",
@@ -381,11 +573,17 @@ func (s *ApplicationService) generateServiceBreakdown(app govuk.Application, cos
 	}
 
 	var services []models.ServiceCost
-	totalCost := s.calculateApplicationCost(app, costData)
+	totalCost := appCostResult.Cost
 	now := time.Now()
 
 	// Generate realistic service distribution
 	serviceCount := s.estimateServiceCount(app)
+	
+	// Ensure we don't exceed available service names
+	if serviceCount > len(serviceNames) {
+		serviceCount = len(serviceNames)
+	}
+	
 	usedServices := serviceNames[:serviceCount]
 
 	for i, serviceName := range usedServices {
@@ -445,9 +643,11 @@ func (s *ApplicationService) generateSimulatedCosts(apps []govuk.Application) []
 	now := time.Now()
 
 	for _, app := range apps {
+		// For simulated costs, we'll use estimation (can't use real tags when generating simulated data)
+		estimatedCost := s.estimateApplicationCost(app, nil)
 		cost := models.CostData{
 			Service:     app.AppName,
-			Amount:      s.calculateApplicationCost(app, nil),
+			Amount:      estimatedCost,
 			Currency:    "GBP",
 			StartDate:   now.AddDate(0, -1, 0),
 			EndDate:     now,
