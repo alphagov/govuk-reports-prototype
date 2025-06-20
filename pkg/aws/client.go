@@ -21,6 +21,7 @@ import (
 
 type Client struct {
 	costExplorer *costexplorer.Client
+	config       aws.Config
 	logger       *logger.Logger
 }
 
@@ -81,8 +82,14 @@ func NewClient(cfg *config.Config, log *logger.Logger) (*Client, error) {
 
 	return &Client{
 		costExplorer: costexplorer.NewFromConfig(awsCfg),
+		config:       awsCfg,
 		logger:       log,
 	}, nil
+}
+
+// GetConfig returns the AWS config for use by other services
+func (c *Client) GetConfig() aws.Config {
+	return c.config
 }
 
 func (c *Client) GetCostData() ([]common.CostData, error) {
