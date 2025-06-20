@@ -157,6 +157,25 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 	router.Use(gin.Recovery())
 
 	// API routes
+	// Available endpoints:
+	// - /api/health - Service health check
+	// - /api/applications - List all applications
+	// - /api/applications/:name - Get specific application
+	// - /api/applications/:name/services - Get application services
+	// - /api/costs - Legacy cost summary (backwards compatibility)
+	// - /api/costs/summary - Cost module summary
+	// - /api/rds/health - RDS service health check
+	// - /api/rds/summary - RDS summary statistics
+	// - /api/rds/instances - List PostgreSQL instances
+	// - /api/rds/instances/:id - Get specific instance
+	// - /api/rds/versions - Version check results
+	// - /api/rds/outdated - Outdated instances
+	// - /api/reports/ - List available reports (backwards compatibility)
+	// - /api/reports/list - List available reports with metadata
+	// - /api/reports/summary - Dashboard summary for all reports
+	// - /api/reports/:id - Get specific report by ID
+	// - /api/reports/costs - Cost report via reports framework
+	// - /api/reports/rds - RDS report via reports framework
 	api := router.Group("/api")
 	{
 		// Health endpoint (keep at /api/health for backward compatibility)
@@ -167,8 +186,14 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 		api.GET("/applications/:name", applicationHandler.GetApplication)
 		api.GET("/applications/:name/services", applicationHandler.GetApplicationServices)
 		
-		// Legacy cost endpoint
+		// Legacy cost endpoints (keep for backwards compatibility)
 		api.GET("/costs", costHandler.GetCostSummary)
+		
+		// Cost module endpoints
+		costs := api.Group("/costs")
+		{
+			costs.GET("/summary", costHandler.GetCostSummary)
+		}
 		
 		// RDS endpoints
 		rds := api.Group("/rds")
@@ -184,9 +209,14 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 		// Reports endpoints
 		reports := api.Group("/reports")
 		{
-			reports.GET("/", getReportsList(reportsManager, log))
-			reports.GET("/summary", getReportsSummary(reportsManager, log))
-			reports.GET("/:id", getReport(reportsManager, log))
+			reports.GET("/", getReportsList(reportsManager, log))           // Keep for backwards compatibility
+			reports.GET("/list", getReportsList(reportsManager, log))       // New cleaner endpoint
+			reports.GET("/summary", getReportsSummary(reportsManager, log)) // Dashboard summary data
+			reports.GET("/:id", getReport(reportsManager, log))             // Individual report by ID
+			
+			// Specific report type endpoints
+			reports.GET("/costs", getSpecificReport(reportsManager, "costs", log))
+			reports.GET("/rds", getSpecificReport(reportsManager, "rds", log))
 		}
 	}
 
@@ -209,10 +239,21 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 func getReportsList(manager *reports.Manager, log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		reportList := manager.GetAvailableReports(c.Request.Context())
-		c.JSON(http.StatusOK, gin.H{
+		
+		response := gin.H{
 			"reports": reportList,
 			"count":   len(reportList),
-		})
+			"status":  "success",
+		}
+		
+		// Add metadata about the reports framework
+		if len(reportList) > 0 {
+			response["framework_version"] = "1.0.0"
+			response["last_updated"] = reportList[0] // This could be enhanced to track actual last update time
+		}
+		
+		log.WithField("available_reports", len(reportList)).Info().Msg("Listed available reports")
+		c.JSON(http.StatusOK, response)
 	}
 }
 
@@ -227,14 +268,31 @@ func getReportsSummary(manager *reports.Manager, log *logger.Logger) gin.Handler
 			log.WithError(err).Error().Msg("Failed to generate reports summary")
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to generate reports summary",
+				"status": "error",
 			})
 			return
 		}
 		
-		c.JSON(http.StatusOK, gin.H{
+		// Get available reports for additional metadata
+		availableReports := manager.GetAvailableReports(c.Request.Context())
+		
+		response := gin.H{
 			"summaries": summaries,
 			"count":     len(summaries),
-		})
+			"status":    "success",
+			"reports":   availableReports,
+			"generated_at": map[string]interface{}{
+				"timestamp": "now", // This could be enhanced with actual timestamps
+				"timezone":  "UTC",
+			},
+		}
+		
+		log.WithFields(map[string]interface{}{
+			"summary_count": len(summaries),
+			"reports_count": len(availableReports),
+		}).Info().Msg("Generated reports summary for dashboard")
+		
+		c.JSON(http.StatusOK, response)
 	}
 }
 
@@ -257,6 +315,27 @@ func getReport(manager *reports.Manager, log *logger.Logger) gin.HandlerFunc {
 			log.WithError(err).Error().Msg("Failed to generate report")
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to generate report",
+			})
+			return
+		}
+		
+		c.JSON(http.StatusOK, reportData)
+	}
+}
+
+// getSpecificReport handles requests for specific report types
+func getSpecificReport(manager *reports.Manager, reportID string, log *logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		params := reports.ReportParams{
+			UseCache: true,
+		}
+		
+		reportData, err := manager.GenerateReport(c.Request.Context(), reportID, params)
+		if err != nil {
+			log.WithError(err).WithField("report_id", reportID).Error().Msg("Failed to generate specific report")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to generate report",
+				"report_id": reportID,
 			})
 			return
 		}
