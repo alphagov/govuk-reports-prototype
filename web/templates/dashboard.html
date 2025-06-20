@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" class="govuk-template">
+<head>
+    <meta charset="utf-8">
+    <title>GOV.UK Reports Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0c0c">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+</head>
+
+<body class="govuk-template__body">
+    <script>document.body.className = ((document.body.className) ? document.body.className + ' js-enabled' : 'js-enabled');</script>
+
+    <header class="govuk-header" role="banner" data-module="govuk-header">
+        <div class="govuk-header__container govuk-width-container">
+            <div class="govuk-header__logo">
+                <a href="/" class="govuk-header__link govuk-header__link--homepage">
+                    <span class="govuk-header__logotype">
+                        <span class="govuk-header__logotype-text">GOV.UK</span>
+                    </span>
+                </a>
+            </div>
+            <div class="govuk-header__content">
+                <a href="/" class="govuk-header__link govuk-header__link--service-name">
+                    Reports Dashboard
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="govuk-width-container">
+        <main class="govuk-main-wrapper" id="main-content" role="main">
+            
+            <!-- Page Header -->
+            <div class="govuk-grid-row">
+                <div class="govuk-grid-column-full">
+                    <h1 class="govuk-heading-xl">GOV.UK Reports Dashboard</h1>
+                    <p class="govuk-body-l">Monitor and analyze reports across all GOV.UK systems and applications</p>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="loading-container">
+                <div class="loading-spinner"></div>
+                <p class="govuk-body">Loading dashboard...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="error-container" style="display: none;">
+                <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert">
+                    <h2 class="govuk-error-summary__title" id="error-summary-title">
+                        There is a problem
+                    </h2>
+                    <div class="govuk-error-summary__body">
+                        <p id="error-message">Failed to load dashboard data. Please try again.</p>
+                        <button class="govuk-button govuk-button--secondary" id="retry-button">
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Modules Grid -->
+            <div class="govuk-grid-row" id="reports-grid" style="display: none;">
+                
+                <!-- Cost Reporter Module -->
+                <div class="govuk-grid-column-one-half">
+                    <div class="report-module-card" id="cost-module">
+                        <div class="report-module-header">
+                            <h2 class="govuk-heading-m">Cost Reporter</h2>
+                            <span class="module-status" id="cost-status">
+                                <span class="status-indicator loading"></span>
+                                Loading...
+                            </span>
+                        </div>
+                        
+                        <div class="report-module-content">
+                            <p class="govuk-body">Monitor AWS costs and spending across all GOV.UK applications</p>
+                            
+                            <!-- Cost Summary Metrics -->
+                            <div class="module-metrics" id="cost-metrics">
+                                <div class="metric">
+                                    <span class="metric-label">Total Monthly Cost</span>
+                                    <span class="metric-value" id="cost-total">Loading...</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Applications</span>
+                                    <span class="metric-value" id="cost-apps">Loading...</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Average Cost</span>
+                                    <span class="metric-value" id="cost-average">Loading...</span>
+                                </div>
+                            </div>
+                            
+                            <div class="module-actions">
+                                <a href="/applications" class="govuk-button govuk-button--secondary">
+                                    View Applications
+                                </a>
+                                <a href="/api/reports/costs" class="govuk-link" target="_blank">
+                                    API Data
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- RDS Version Checker Module -->
+                <div class="govuk-grid-column-one-half">
+                    <div class="report-module-card" id="rds-module">
+                        <div class="report-module-header">
+                            <h2 class="govuk-heading-m">PostgreSQL Version Checker</h2>
+                            <span class="module-status" id="rds-status">
+                                <span class="status-indicator loading"></span>
+                                Loading...
+                            </span>
+                        </div>
+                        
+                        <div class="report-module-content">
+                            <p class="govuk-body">Monitor PostgreSQL RDS instances and version compliance</p>
+                            
+                            <!-- RDS Summary Metrics -->
+                            <div class="module-metrics" id="rds-metrics">
+                                <div class="metric">
+                                    <span class="metric-label">PostgreSQL Instances</span>
+                                    <span class="metric-value" id="rds-instances">Loading...</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">EOL Instances</span>
+                                    <span class="metric-value alert" id="rds-eol">Loading...</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Version Compliance</span>
+                                    <span class="metric-value" id="rds-compliance">Loading...</span>
+                                </div>
+                            </div>
+                            
+                            <div class="module-actions">
+                                <a href="/rds" class="govuk-button govuk-button--secondary">
+                                    View RDS Instances
+                                </a>
+                                <a href="/api/reports/rds" class="govuk-link" target="_blank">
+                                    API Data
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="govuk-grid-row" id="quick-actions" style="display: none;">
+                <div class="govuk-grid-column-full">
+                    <h2 class="govuk-heading-l">Quick Actions</h2>
+                    
+                    <div class="action-cards">
+                        <div class="action-card">
+                            <h3 class="govuk-heading-s">
+                                <a href="/api/reports/summary" class="govuk-link">
+                                    View All Reports Summary
+                                </a>
+                            </h3>
+                            <p class="govuk-body-s">Get a comprehensive overview of all available reports</p>
+                        </div>
+                        
+                        <div class="action-card">
+                            <h3 class="govuk-heading-s">
+                                <a href="/api/health" class="govuk-link">
+                                    System Health Check
+                                </a>
+                            </h3>
+                            <p class="govuk-body-s">Check the health status of all dashboard services</p>
+                        </div>
+                        
+                        <div class="action-card">
+                            <h3 class="govuk-heading-s">
+                                <a href="/api/rds/health" class="govuk-link">
+                                    RDS Service Health
+                                </a>
+                            </h3>
+                            <p class="govuk-body-s">Verify AWS RDS connectivity and service status</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Information -->
+            <div class="govuk-grid-row" id="system-info" style="display: none;">
+                <div class="govuk-grid-column-full">
+                    <details class="govuk-details" data-module="govuk-details">
+                        <summary class="govuk-details__summary">
+                            <span class="govuk-details__summary-text">
+                                System Information
+                            </span>
+                        </summary>
+                        <div class="govuk-details__text">
+                            <dl class="govuk-summary-list govuk-summary-list--no-border">
+                                <div class="govuk-summary-list__row">
+                                    <dt class="govuk-summary-list__key">Dashboard Version</dt>
+                                    <dd class="govuk-summary-list__value">1.0.0</dd>
+                                </div>
+                                <div class="govuk-summary-list__row">
+                                    <dt class="govuk-summary-list__key">Available Reports</dt>
+                                    <dd class="govuk-summary-list__value" id="available-reports-count">Loading...</dd>
+                                </div>
+                                <div class="govuk-summary-list__row">
+                                    <dt class="govuk-summary-list__key">Last Updated</dt>
+                                    <dd class="govuk-summary-list__value" id="last-updated">Loading...</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <footer class="govuk-footer" role="contentinfo">
+        <div class="govuk-width-container">
+            <div class="govuk-footer__meta">
+                <div class="govuk-footer__meta-item govuk-footer__meta-item--grow">
+                    <h2 class="govuk-visually-hidden">Support links</h2>
+                    <ul class="govuk-footer__inline-list">
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="/api/health">API Health</a>
+                        </li>
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="/api/reports">Reports API</a>
+                        </li>
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="https://github.com/alphagov">GOV.UK on GitHub</a>
+                        </li>
+                    </ul>
+                    <div class="govuk-footer__meta-custom">
+                        Built with ❤️ for GOV.UK
+                    </div>
+                </div>
+                <div class="govuk-footer__meta-item">
+                    <a class="govuk-footer__link govuk-footer__copyright-logo" href="https://www.nationalarchives.gov.uk/information-management/re-using-public-sector-information/uk-government-licensing-framework/crown-copyright/">
+                        © Crown copyright
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

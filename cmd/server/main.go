@@ -195,7 +195,8 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 	router.LoadHTMLGlob("web/templates/*")
 
 	// Web pages
-	router.GET("/", applicationHandler.GetApplicationsPage)
+	router.GET("/", getDashboardPage)
+	router.GET("/applications", applicationHandler.GetApplicationsPage)
 	router.GET("/applications/:name", applicationHandler.GetApplicationPage)
 	router.GET("/rds", rdsHandler.GetInstancesPage)
 	router.GET("/rds/:id", rdsHandler.GetInstancePage)
@@ -262,4 +263,11 @@ func getReport(manager *reports.Manager, log *logger.Logger) gin.HandlerFunc {
 		
 		c.JSON(http.StatusOK, reportData)
 	}
+}
+
+// Dashboard page handler
+func getDashboardPage(c *gin.Context) {
+	c.HTML(http.StatusOK, "dashboard.html", gin.H{
+		"title": "GOV.UK Reports Dashboard",
+	})
 }
