@@ -1,12 +1,10 @@
-package services
+package costs
 
 import (
 	"time"
 
-	"govuk-reports-dashboard/internal/models"
 	"govuk-reports-dashboard/pkg/aws"
 	"govuk-reports-dashboard/pkg/govuk"
-
 	"govuk-reports-dashboard/pkg/logger"
 )
 
@@ -24,7 +22,7 @@ func NewCostService(awsClient *aws.Client, govukClient *govuk.Client, log *logge
 	}
 }
 
-func (s *CostService) GetCostSummary() (*models.CostSummary, error) {
+func (s *CostService) GetCostSummary() (*CostSummary, error) {
 	s.logger.Info().Msg("Fetching AWS cost data")
 
 	costData, err := s.awsClient.GetCostData()
@@ -33,7 +31,7 @@ func (s *CostService) GetCostSummary() (*models.CostSummary, error) {
 		return nil, err
 	}
 
-	summary := &models.CostSummary{
+	summary := &CostSummary{
 		TotalCost:   calculateTotal(costData),
 		Currency:    "GBP",
 		PeriodStart: time.Now().AddDate(0, -1, 0),
@@ -45,7 +43,7 @@ func (s *CostService) GetCostSummary() (*models.CostSummary, error) {
 	return summary, nil
 }
 
-func calculateTotal(costs []models.CostData) float64 {
+func calculateTotal(costs []CostData) float64 {
 	total := 0.0
 	for _, cost := range costs {
 		total += cost.Amount

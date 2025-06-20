@@ -1,23 +1,53 @@
-package handlers
+package costs
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
 	"govuk-reports-dashboard/internal/models"
-	"govuk-reports-dashboard/internal/services"
 	"govuk-reports-dashboard/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
 
+type CostHandler struct {
+	costService *CostService
+	logger      *logger.Logger
+}
+
+func NewCostHandler(costService *CostService, log *logger.Logger) *CostHandler {
+	return &CostHandler{
+		costService: costService,
+		logger:      log,
+	}
+}
+
+func (h *CostHandler) GetCostSummary(c *gin.Context) {
+	h.logger.Info().Msg("Fetching cost summary")
+
+	summary, err := h.costService.GetCostSummary()
+	if err != nil {
+		h.logger.WithError(err).Error().Msg("Failed to fetch cost summary")
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "internal_server_error",
+			Message: "Failed to fetch cost summary",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Data:    summary,
+		Message: "Cost summary retrieved successfully",
+	})
+}
+
 type ApplicationHandler struct {
-	applicationService *services.ApplicationService
+	applicationService *ApplicationService
 	logger             *logger.Logger
 }
 
-func NewApplicationHandler(applicationService *services.ApplicationService, log *logger.Logger) *ApplicationHandler {
+func NewApplicationHandler(applicationService *ApplicationService, log *logger.Logger) *ApplicationHandler {
 	return &ApplicationHandler{
 		applicationService: applicationService,
 		logger:             log,
@@ -152,7 +182,7 @@ func (h *ApplicationHandler) GetApplicationPage(c *gin.Context) {
 	h.logger.WithField("app_name", name).Info().Msg("Serving application detail page")
 	
 	c.HTML(http.StatusOK, "application-detail.html", gin.H{
-		"title":           fmt.Sprintf("%s - GOV.UK Reports Dashboard", name),
+		"title":           "GOV.UK Reports Dashboard - " + name,
 		"application_name": name,
 	})
 }

@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"govuk-reports-dashboard/internal/config"
-	"govuk-reports-dashboard/internal/services"
+	"govuk-reports-dashboard/internal/modules/costs"
 	"govuk-reports-dashboard/pkg/aws"
 	"govuk-reports-dashboard/pkg/govuk"
 	"govuk-reports-dashboard/pkg/logger"
@@ -44,7 +44,7 @@ func main() {
 	govukClient := govuk.NewClient(cfg, logr)
 	
 	// Create application service
-	appService := services.NewApplicationService(awsClient, govukClient, logr)
+	appService := costs.NewApplicationService(awsClient, govukClient, logr)
 	
 	fmt.Println("🔍 Testing tag-based cost integration in application service")
 	

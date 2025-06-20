@@ -1,4 +1,4 @@
-package services
+package costs
 
 import (
 	"context"
@@ -6,10 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"govuk-reports-dashboard/internal/models"
 	"govuk-reports-dashboard/pkg/aws"
 	"govuk-reports-dashboard/pkg/govuk"
-
 	"govuk-reports-dashboard/pkg/logger"
 )
 
@@ -28,7 +26,7 @@ func NewApplicationService(awsClient *aws.Client, govukClient *govuk.Client, log
 }
 
 // GetAllApplications returns all applications with cost summaries
-func (s *ApplicationService) GetAllApplications(ctx context.Context) (*models.ApplicationListResponse, error) {
+func (s *ApplicationService) GetAllApplications(ctx context.Context) (*ApplicationListResponse, error) {
 	s.logger.Info().Msg("Fetching all applications with cost data")
 
 	// Get applications from GOV.UK API
@@ -45,7 +43,7 @@ func (s *ApplicationService) GetAllApplications(ctx context.Context) (*models.Ap
 		costData = s.generateSimulatedCosts(apps)
 	}
 
-	var applicationSummaries []models.ApplicationSummary
+	var applicationSummaries []ApplicationSummary
 	var totalCost float64
 
 	for _, app := range apps {
@@ -53,7 +51,7 @@ func (s *ApplicationService) GetAllApplications(ctx context.Context) (*models.Ap
 		costResult := s.calculateApplicationCost(app, costData)
 		totalCost += costResult.Cost
 
-		summary := models.ApplicationSummary{
+		summary := ApplicationSummary{
 			Name:               app.AppName,
 			Shortname:          app.Shortname,
 			Team:               app.Team,
@@ -64,7 +62,7 @@ func (s *ApplicationService) GetAllApplications(ctx context.Context) (*models.Ap
 			LastUpdated:        time.Now(),
 			CostSource:         costResult.Source,
 			CostConfidence:     costResult.Confidence,
-			Links: models.Links{
+			Links: Links{
 				Self:      app.Links.Self,
 				HTMLURL:   app.Links.HTMLURL,
 				RepoURL:   app.Links.RepoURL,
@@ -75,7 +73,7 @@ func (s *ApplicationService) GetAllApplications(ctx context.Context) (*models.Ap
 		applicationSummaries = append(applicationSummaries, summary)
 	}
 
-	response := &models.ApplicationListResponse{
+	response := &ApplicationListResponse{
 		Applications: applicationSummaries,
 		TotalCost:    totalCost,
 		Currency:     "GBP",
@@ -92,7 +90,7 @@ func (s *ApplicationService) GetAllApplications(ctx context.Context) (*models.Ap
 }
 
 // GetApplicationByName returns detailed application data with cost breakdown
-func (s *ApplicationService) GetApplicationByName(ctx context.Context, name string) (*models.ApplicationDetail, error) {
+func (s *ApplicationService) GetApplicationByName(ctx context.Context, name string) (*ApplicationDetail, error) {
 	s.logger.WithField("app_name", name).Info().Msg("Fetching application details")
 
 	// Get specific application
@@ -114,8 +112,8 @@ func (s *ApplicationService) GetApplicationByName(ctx context.Context, name stri
 	// Generate service breakdown
 	services := s.generateServiceBreakdown(*app, costData, costResult)
 
-	detail := &models.ApplicationDetail{
-		ApplicationSummary: models.ApplicationSummary{
+	detail := &ApplicationDetail{
+		ApplicationSummary: ApplicationSummary{
 			Name:               app.AppName,
 			Shortname:          app.Shortname,
 			Team:               app.Team,
@@ -126,7 +124,7 @@ func (s *ApplicationService) GetApplicationByName(ctx context.Context, name stri
 			LastUpdated:        time.Now(),
 			CostSource:         costResult.Source,
 			CostConfidence:     costResult.Confidence,
-			Links: models.Links{
+			Links: Links{
 				Self:      app.Links.Self,
 				HTMLURL:   app.Links.HTMLURL,
 				RepoURL:   app.Links.RepoURL,
@@ -140,7 +138,7 @@ func (s *ApplicationService) GetApplicationByName(ctx context.Context, name stri
 }
 
 // GetApplicationServices returns service cost breakdown for an application
-func (s *ApplicationService) GetApplicationServices(ctx context.Context, name string) ([]models.ServiceCost, error) {
+func (s *ApplicationService) GetApplicationServices(ctx context.Context, name string) ([]ServiceCost, error) {
 	s.logger.WithField("app_name", name).Info().Msg("Fetching application service costs")
 
 	// Get specific application
@@ -269,7 +267,7 @@ func (s *ApplicationService) mapAppNameToSystemTag(app govuk.Application) string
 }
 
 // determineCostConfidence assesses the reliability of cost data
-func (s *ApplicationService) determineCostConfidence(costData []models.CostData, app govuk.Application) string {
+func (s *ApplicationService) determineCostConfidence(costData []CostData, app govuk.Application) string {
 	if len(costData) == 0 {
 		return "none"
 	}
@@ -314,7 +312,7 @@ type CostCalculationResult struct {
 	Confidence string  // "high", "medium", "low", "none"
 }
 
-func (s *ApplicationService) calculateApplicationCost(app govuk.Application, costData []models.CostData) CostCalculationResult {
+func (s *ApplicationService) calculateApplicationCost(app govuk.Application, costData []CostData) CostCalculationResult {
 	// First, try to get real tag-based cost data from AWS
 	if realCost, confidence := s.tryGetRealTagBasedCost(app); realCost > 0 {
 		s.logger.WithFields(map[string]interface{}{
@@ -362,7 +360,7 @@ func (s *ApplicationService) calculateApplicationCost(app govuk.Application, cos
 }
 
 // findExactCostMatch attempts to find direct cost attribution
-func (s *ApplicationService) findExactCostMatch(app govuk.Application, costData []models.CostData) float64 {
+func (s *ApplicationService) findExactCostMatch(app govuk.Application, costData []CostData) float64 {
 	// Try different naming convention matches
 	possibleMatches := []string{
 		app.AppName,                                    // Direct name match
@@ -396,7 +394,7 @@ func (s *ApplicationService) findExactCostMatch(app govuk.Application, costData 
 }
 
 // estimateApplicationCost provides intelligent cost estimation
-func (s *ApplicationService) estimateApplicationCost(app govuk.Application, costData []models.CostData) float64 {
+func (s *ApplicationService) estimateApplicationCost(app govuk.Application, costData []CostData) float64 {
 	// Base cost calculation using multiple factors
 	baseCost := s.calculateBaseCost(app)
 	
@@ -559,7 +557,7 @@ func (s *ApplicationService) estimateServiceCount(app govuk.Application) int {
 	}
 }
 
-func (s *ApplicationService) generateServiceBreakdown(app govuk.Application, costData []models.CostData, appCostResult CostCalculationResult) []models.ServiceCost {
+func (s *ApplicationService) generateServiceBreakdown(app govuk.Application, costData []CostData, appCostResult CostCalculationResult) []ServiceCost {
 	// Common AWS services used by GOV.UK applications
 	serviceNames := []string{
 		"Amazon EC2",
@@ -572,7 +570,7 @@ func (s *ApplicationService) generateServiceBreakdown(app govuk.Application, cos
 		"Amazon CloudWatch",
 	}
 
-	var services []models.ServiceCost
+	var services []ServiceCost
 	totalCost := appCostResult.Cost
 	now := time.Now()
 
@@ -600,7 +598,7 @@ func (s *ApplicationService) generateServiceBreakdown(app govuk.Application, cos
 
 		cost := totalCost * percentage
 
-		service := models.ServiceCost{
+		service := ServiceCost{
 			ServiceName: serviceName,
 			Cost:        cost,
 			Currency:    "GBP",
@@ -618,7 +616,7 @@ func (s *ApplicationService) generateServiceBreakdown(app govuk.Application, cos
 	return services
 }
 
-func (s *ApplicationService) normalizeServiceCosts(services []models.ServiceCost, totalCost float64) {
+func (s *ApplicationService) normalizeServiceCosts(services []ServiceCost, totalCost float64) {
 	if len(services) == 0 || totalCost == 0 {
 		return
 	}
@@ -638,14 +636,14 @@ func (s *ApplicationService) normalizeServiceCosts(services []models.ServiceCost
 	}
 }
 
-func (s *ApplicationService) generateSimulatedCosts(apps []govuk.Application) []models.CostData {
-	var costData []models.CostData
+func (s *ApplicationService) generateSimulatedCosts(apps []govuk.Application) []CostData {
+	var costData []CostData
 	now := time.Now()
 
 	for _, app := range apps {
 		// For simulated costs, we'll use estimation (can't use real tags when generating simulated data)
 		estimatedCost := s.estimateApplicationCost(app, nil)
-		cost := models.CostData{
+		cost := CostData{
 			Service:     app.AppName,
 			Amount:      estimatedCost,
 			Currency:    "GBP",
