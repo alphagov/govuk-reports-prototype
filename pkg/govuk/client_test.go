@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"govuk-cost-dashboard/internal/config"
+	"govuk-reports-dashboard/internal/config"
 
 	"github.com/sirupsen/logrus"
 )

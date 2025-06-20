@@ -3,11 +3,11 @@ package handlers
 import (
 	"net/http"
 
-	"govuk-cost-dashboard/internal/models"
-	"govuk-cost-dashboard/internal/services"
+	"govuk-reports-dashboard/internal/models"
+	"govuk-reports-dashboard/internal/services"
 
 	"github.com/gin-gonic/gin"
-	"govuk-cost-dashboard/pkg/logger"
+	"govuk-reports-dashboard/pkg/logger"
 )
 
 type CostHandler struct {

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"govuk-cost-dashboard/internal/models"
+	"govuk-reports-dashboard/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

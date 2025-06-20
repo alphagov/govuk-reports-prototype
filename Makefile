@@ -1,8 +1,8 @@
-# GOV.UK Cost Dashboard Makefile
+# GOV.UK Reports Dashboard Makefile
 # =================================
 
 # Variables
-APP_NAME := govuk-cost-dashboard
+APP_NAME := govuk-reports-dashboard
 BINARY_NAME := $(APP_NAME)
 GO_VERSION := 1.21
 DOCKER_TAG := latest
@@ -198,7 +198,7 @@ setup: ## 🛠️  Set up development environment
 .PHONY: env-example
 env-example: ## 📝 Create example environment file
 	@echo "$(BLUE)📝 Creating example .env file...$(RESET)"
-	@echo "# GOV.UK Cost Dashboard Environment Variables" > .env.example
+	@echo "# GOV.UK Reports Dashboard Environment Variables" > .env.example
 	@echo "# ==========================================" >> .env.example
 	@echo "" >> .env.example
 	@echo "# Server Configuration" >> .env.example
@@ -230,7 +230,7 @@ env-example: ## 📝 Create example environment file
 	@echo "GOVUK_APPS_API_CACHE_TTL=15m" >> .env.example
 	@echo "GOVUK_APPS_API_RETRIES=3" >> .env.example
 	@echo "GOVUK_RATE_LIMIT=100" >> .env.example
-	@echo "GOVUK_USER_AGENT=GOV.UK-Cost-Dashboard/1.0" >> .env.example
+	@echo "GOVUK_USER_AGENT=GOV.UK-Reports-Dashboard/1.0" >> .env.example
 	@echo "" >> .env.example
 	@echo "# Logging Configuration" >> .env.example
 	@echo "LOG_LEVEL=info" >> .env.example
@@ -262,13 +262,13 @@ docs: ## 📚 Generate documentation
 .PHONY: godoc
 godoc: ## 🌐 Start local documentation server
 	@echo "$(BLUE)🌐 Starting documentation server...$(RESET)"
-	@echo "$(YELLOW)📖 Visit: http://localhost:6060/pkg/govuk-cost-dashboard/$(RESET)"
+	@echo "$(YELLOW)📖 Visit: http://localhost:6060/pkg/govuk-reports-dashboard/$(RESET)"
 	@godoc -http=:6060
 
 ## 🆘 Help
 .PHONY: help
 help: ## 📖 Show this help message
-	@echo "$(BLUE)📖 GOV.UK Cost Dashboard - Available Commands$(RESET)"
+	@echo "$(BLUE)📖 GOV.UK Reports Dashboard - Available Commands$(RESET)"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(RESET) %s\n", $$1, $$2}' | \

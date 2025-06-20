@@ -9,12 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"govuk-cost-dashboard/internal/config"
-	"govuk-cost-dashboard/internal/handlers"
-	"govuk-cost-dashboard/internal/services"
-	"govuk-cost-dashboard/pkg/aws"
-	"govuk-cost-dashboard/pkg/govuk"
-	"govuk-cost-dashboard/pkg/logger"
+	"govuk-reports-dashboard/internal/config"
+	"govuk-reports-dashboard/internal/handlers"
+	"govuk-reports-dashboard/internal/services"
+	"govuk-reports-dashboard/pkg/aws"
+	"govuk-reports-dashboard/pkg/govuk"
+	"govuk-reports-dashboard/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,7 +41,7 @@ func main() {
 	// Set as global logger
 	log.SetGlobalLogger()
 
-	log.LogStartup("GOV.UK Cost Dashboard", "1.0.0", map[string]interface{}{
+	log.LogStartup("GOV.UK Reports Dashboard", "1.0.0", map[string]interface{}{
 		"environment": cfg.Server.Environment,
 		"port":        cfg.Server.Port,
 		"log_level":   cfg.Log.Level,
@@ -91,7 +91,7 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.WithError(err).Error().Msg("Server forced to shutdown")
 	} else {
-		log.LogShutdown("GOV.UK Cost Dashboard", time.Since(shutdownStart))
+		log.LogShutdown("GOV.UK Reports Dashboard", time.Since(shutdownStart))
 	}
 }
 

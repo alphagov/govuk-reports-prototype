@@ -16,7 +16,7 @@ A comprehensive Go client for the GOV.UK applications API that fetches applicati
 ## Installation
 
 ```bash
-go get govuk-cost-dashboard/pkg/govuk
+go get govuk-reports-dashboard/pkg/govuk
 ```
 
 ## Quick Start
@@ -30,8 +30,8 @@ import (
     "log"
     "time"
 
-    "govuk-cost-dashboard/internal/config"
-    "govuk-cost-dashboard/pkg/govuk"
+    "govuk-reports-dashboard/internal/config"
+    "govuk-reports-dashboard/pkg/govuk"
     "github.com/sirupsen/logrus"
 )
 

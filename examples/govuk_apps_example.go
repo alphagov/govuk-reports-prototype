@@ -7,8 +7,8 @@ import (
 	"log"
 	"time"
 
-	"govuk-cost-dashboard/internal/config"
-	"govuk-cost-dashboard/pkg/govuk"
+	"govuk-reports-dashboard/internal/config"
+	"govuk-reports-dashboard/pkg/govuk"
 
 	"github.com/sirupsen/logrus"
 )

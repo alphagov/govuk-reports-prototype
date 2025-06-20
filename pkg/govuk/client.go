@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"govuk-cost-dashboard/internal/config"
+	"govuk-reports-dashboard/internal/config"
 
-	"govuk-cost-dashboard/pkg/logger"
+	"govuk-reports-dashboard/pkg/logger"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 	DefaultRetries      = 3
 	DefaultRetryDelay   = 1 * time.Second
 	AppsJSONEndpoint    = "https://docs.publishing.service.gov.uk/apps.json"
-	UserAgent          = "govuk-cost-dashboard/1.0"
+	UserAgent          = "govuk-reports-dashboard/1.0"
 	RateLimitSleepTime = 60 * time.Second
 )
 

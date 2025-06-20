@@ -3,11 +3,11 @@ package services
 import (
 	"time"
 
-	"govuk-cost-dashboard/internal/models"
-	"govuk-cost-dashboard/pkg/aws"
-	"govuk-cost-dashboard/pkg/govuk"
+	"govuk-reports-dashboard/internal/models"
+	"govuk-reports-dashboard/pkg/aws"
+	"govuk-reports-dashboard/pkg/govuk"
 
-	"govuk-cost-dashboard/pkg/logger"
+	"govuk-reports-dashboard/pkg/logger"
 )
 
 type CostService struct {

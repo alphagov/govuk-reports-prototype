@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"govuk-cost-dashboard/internal/models"
-	"govuk-cost-dashboard/internal/services"
-	"govuk-cost-dashboard/pkg/logger"
+	"govuk-reports-dashboard/internal/models"
+	"govuk-reports-dashboard/internal/services"
+	"govuk-reports-dashboard/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -134,7 +134,7 @@ func (h *ApplicationHandler) GetApplicationsPage(c *gin.Context) {
 	h.logger.Info().Msg("Serving applications dashboard page")
 	
 	c.HTML(http.StatusOK, "applications.html", gin.H{
-		"title": "GOV.UK Cost Dashboard",
+		"title": "GOV.UK Reports Dashboard",
 	})
 }
 
@@ -152,7 +152,7 @@ func (h *ApplicationHandler) GetApplicationPage(c *gin.Context) {
 	h.logger.WithField("app_name", name).Info().Msg("Serving application detail page")
 	
 	c.HTML(http.StatusOK, "application-detail.html", gin.H{
-		"title":           fmt.Sprintf("%s - GOV.UK Cost Dashboard", name),
+		"title":           fmt.Sprintf("%s - GOV.UK Reports Dashboard", name),
 		"application_name": name,
 	})
 }
