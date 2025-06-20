@@ -5,22 +5,16 @@
 A Go app providing reporting capabilities for GOV.UK Web, Publishing, and Platform services. The dashboard integrates multiple monitoring systems and provides both web interfaces and REST APIs for infrastructure and application services.
 
 ![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)
-![License](https://img.shields.io/badge/License-Crown%20Copyright-gold.svg)
 ![Build Status](https://img.shields.io/badge/Build-Passing-green.svg)
 
 ## ✨ Features
 
-### **Unified Dashboard**
-
-- **Multi-module reporting** with consistent interface
-- **Real-time data loading** from multiple sources
-
-### 💰 **Cost Reporting Module**
+### 💰 **Cost Reporting**
 
 - **AWS Cost Explorer integration** for real-time cost monitoring
 - **Application-level cost breakdown** grouped by GOV.UK services
 
-### 🗄️ **RDS Version Checker Module**
+### 🗄️ **RDS Version Checker**
 
 - **PostgreSQL instance discovery** from AWS RDS
 - **Version compliance monitoring** with EOL tracking
@@ -426,4 +420,3 @@ curl http://localhost:8080/api/reports/list
 This project is licensed under Crown Copyright. See the LICENSE file for details.
 
 ---
-
