@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 	"govuk-reports-dashboard/internal/config"
-	"govuk-reports-dashboard/internal/models"
 	"govuk-reports-dashboard/pkg/logger"
+	"govuk-reports-dashboard/pkg/common"
 	"os"
 	"strconv"
 	"strings"
@@ -85,7 +85,7 @@ func NewClient(cfg *config.Config, log *logger.Logger) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) GetCostData() ([]models.CostData, error) {
+func (c *Client) GetCostData() ([]common.CostData, error) {
 	endTime := time.Now()
 	startTime := endTime.AddDate(0, -1, 0)
 
@@ -110,7 +110,7 @@ func (c *Client) GetCostData() ([]models.CostData, error) {
 		return nil, err
 	}
 
-	var costData []models.CostData
+	var costData []common.CostData
 	for _, resultByTime := range result.ResultsByTime {
 		for _, group := range resultByTime.Groups {
 			if len(group.Keys) > 0 && len(group.Metrics) > 0 {
@@ -120,7 +120,7 @@ func (c *Client) GetCostData() ([]models.CostData, error) {
 						amount = parseFloat(*blendedCost.Amount)
 					}
 
-					costData = append(costData, models.CostData{
+					costData = append(costData, common.CostData{
 						Service:     group.Keys[0],
 						Amount:      amount,
 						Currency:    getStringValue(blendedCost.Unit),
@@ -136,7 +136,7 @@ func (c *Client) GetCostData() ([]models.CostData, error) {
 	return costData, nil
 }
 
-func (c *Client) GetCostDataBySystemTag() ([]models.CostData, error) {
+func (c *Client) GetCostDataBySystemTag() ([]common.CostData, error) {
 	endTime := time.Now()
 	startTime := endTime.AddDate(0, -1, 0)
 
@@ -161,7 +161,7 @@ func (c *Client) GetCostDataBySystemTag() ([]models.CostData, error) {
 		return nil, err
 	}
 
-	var costData []models.CostData
+	var costData []common.CostData
 	tagPrefix := getTagPrefix()
 
 	for _, resultByTime := range result.ResultsByTime {
@@ -180,7 +180,7 @@ func (c *Client) GetCostDataBySystemTag() ([]models.CostData, error) {
 						amount = parseFloat(*blendedCost.Amount)
 					}
 
-					costData = append(costData, models.CostData{
+					costData = append(costData, common.CostData{
 						Service:     tagValue, // Using tag value as service for consistency
 						Amount:      amount,
 						Currency:    getStringValue(blendedCost.Unit),
@@ -196,7 +196,7 @@ func (c *Client) GetCostDataBySystemTag() ([]models.CostData, error) {
 	return costData, nil
 }
 
-func (c *Client) GetCostDataForApplication(appName string) ([]models.CostData, error) {
+func (c *Client) GetCostDataForApplication(appName string) ([]common.CostData, error) {
 	endTime := time.Now()
 	startTime := endTime.AddDate(0, -1, 0)
 	tagPrefix := getTagPrefix()
@@ -229,7 +229,7 @@ func (c *Client) GetCostDataForApplication(appName string) ([]models.CostData, e
 		return nil, err
 	}
 
-	var costData []models.CostData
+	var costData []common.CostData
 	for _, resultByTime := range result.ResultsByTime {
 		for _, group := range resultByTime.Groups {
 			if len(group.Keys) > 0 && len(group.Metrics) > 0 {
@@ -239,7 +239,7 @@ func (c *Client) GetCostDataForApplication(appName string) ([]models.CostData, e
 						amount = parseFloat(*blendedCost.Amount)
 					}
 
-					costData = append(costData, models.CostData{
+					costData = append(costData, common.CostData{
 						Service:     group.Keys[0],
 						Amount:      amount,
 						Currency:    getStringValue(blendedCost.Unit),

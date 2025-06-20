@@ -11,7 +11,8 @@ import (
 
 	"govuk-reports-dashboard/internal/config"
 	"govuk-reports-dashboard/internal/handlers"
-	"govuk-reports-dashboard/internal/services"
+	"govuk-reports-dashboard/internal/modules/costs"
+	"govuk-reports-dashboard/internal/reports"
 	"govuk-reports-dashboard/pkg/aws"
 	"govuk-reports-dashboard/pkg/govuk"
 	"govuk-reports-dashboard/pkg/logger"
@@ -54,14 +55,26 @@ func main() {
 
 	govukClient := govuk.NewClient(cfg, log)
 
-	costService := services.NewCostService(awsClient, govukClient, log)
-	applicationService := services.NewApplicationService(awsClient, govukClient, log)
+	// Initialize reports manager
+	reportsManager := reports.NewManager(log)
 
+	// Initialize cost module services
+	costService := costs.NewCostService(awsClient, govukClient, log)
+	applicationService := costs.NewApplicationService(awsClient, govukClient, log)
+
+	// Create and register cost report
+	costReport := costs.NewCostReport(costService, applicationService, log)
+	err = reportsManager.Register(costReport)
+	if err != nil {
+		log.WithError(err).Fatal().Msg("Failed to register cost report")
+	}
+
+	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler()
-	costHandler := handlers.NewCostHandler(costService, log)
-	applicationHandler := handlers.NewApplicationHandler(applicationService, log)
+	costHandler := costs.NewCostHandler(costService, log)
+	applicationHandler := costs.NewApplicationHandler(applicationService, log)
 
-	router := setupRouter(cfg, log, healthHandler, costHandler, applicationHandler)
+	router := setupRouter(cfg, log, healthHandler, costHandler, applicationHandler, reportsManager)
 
 	srv := &http.Server{
 		Addr:         cfg.GetBindAddress(),
@@ -95,7 +108,7 @@ func main() {
 	}
 }
 
-func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers.HealthHandler, costHandler *handlers.CostHandler, applicationHandler *handlers.ApplicationHandler) *gin.Engine {
+func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers.HealthHandler, costHandler *costs.CostHandler, applicationHandler *costs.ApplicationHandler, reportsManager *reports.Manager) *gin.Engine {
 	if cfg.Server.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -144,6 +157,14 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 		
 		// Legacy cost endpoint
 		api.GET("/costs", costHandler.GetCostSummary)
+		
+		// Reports endpoints
+		reports := api.Group("/reports")
+		{
+			reports.GET("/", getReportsList(reportsManager, log))
+			reports.GET("/summary", getReportsSummary(reportsManager, log))
+			reports.GET("/:id", getReport(reportsManager, log))
+		}
 	}
 
 	// Static files
@@ -155,4 +176,65 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 	router.GET("/applications/:name", applicationHandler.GetApplicationPage)
 
 	return router
+}
+
+// Reports API handlers
+
+func getReportsList(manager *reports.Manager, log *logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		reportList := manager.GetAvailableReports(c.Request.Context())
+		c.JSON(http.StatusOK, gin.H{
+			"reports": reportList,
+			"count":   len(reportList),
+		})
+	}
+}
+
+func getReportsSummary(manager *reports.Manager, log *logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		params := reports.ReportParams{
+			UseCache: true,
+		}
+		
+		summaries, err := manager.GenerateSummary(c.Request.Context(), params)
+		if err != nil {
+			log.WithError(err).Error().Msg("Failed to generate reports summary")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to generate reports summary",
+			})
+			return
+		}
+		
+		c.JSON(http.StatusOK, gin.H{
+			"summaries": summaries,
+			"count":     len(summaries),
+		})
+	}
+}
+
+func getReport(manager *reports.Manager, log *logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		reportID := c.Param("id")
+		if reportID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Report ID is required",
+			})
+			return
+		}
+		
+		params := reports.ReportParams{
+			UseCache: true,
+		}
+		
+		reportData, err := manager.GenerateReport(c.Request.Context(), reportID, params)
+		if err != nil {
+			log.WithError(err).Error().Msg("Failed to generate report")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to generate report",
+			})
+			return
+		}
+		
+		c.JSON(http.StatusOK, reportData)
+	}
 }

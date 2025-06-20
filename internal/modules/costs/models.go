@@ -1,10 +1,24 @@
-package models
+package costs
 
 import (
 	"time"
 
 	"govuk-reports-dashboard/pkg/govuk"
+	"govuk-reports-dashboard/pkg/common"
 )
+
+// CostData is imported from pkg/common
+type CostData = common.CostData
+
+// CostSummary represents a summary of costs across services
+type CostSummary struct {
+	TotalCost     float64    `json:"total_cost"`
+	Currency      string     `json:"currency"`
+	PeriodStart   time.Time  `json:"period_start"`
+	PeriodEnd     time.Time  `json:"period_end"`
+	Services      []CostData `json:"services"`
+	LastUpdated   time.Time  `json:"last_updated"`
+}
 
 // ApplicationCost represents an application with its associated costs
 type ApplicationCost struct {
