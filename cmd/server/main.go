@@ -57,34 +57,70 @@ func main() {
 	govukClient := govuk.NewClient(cfg, log)
 
 	// Initialize reports manager
+	log.Info().Msg("Initializing reports management framework")
 	reportsManager := reports.NewManager(log)
 
-	// Initialize cost module services
-	costService := costs.NewCostService(awsClient, govukClient, log)
-	applicationService := costs.NewApplicationService(awsClient, govukClient, log)
+	// Initialize report modules with proper error handling
+	var costService *costs.CostService
+	var applicationService *costs.ApplicationService
+	var rdsService *rds.RDSService
+	var costHandler *costs.CostHandler
+	var applicationHandler *costs.ApplicationHandler
+	var rdsHandler *rds.RDSHandler
 
-	// Create and register cost report
+	// Initialize cost module
+	log.Info().Msg("Initializing cost reporting module")
+	costService = costs.NewCostService(awsClient, govukClient, log)
+	applicationService = costs.NewApplicationService(awsClient, govukClient, log)
+
+	// Create and register cost report with error handling
 	costReport := costs.NewCostReport(costService, applicationService, log)
 	err = reportsManager.Register(costReport)
 	if err != nil {
-		log.WithError(err).Fatal().Msg("Failed to register cost report")
+		log.WithError(err).Error().Msg("Failed to register cost report - cost reporting will be unavailable")
+		// Continue running but cost reporting won't be available
+	} else {
+		log.Info().Msg("Cost reporting module registered successfully")
 	}
 
-	// Initialize RDS module services
-	rdsService := rds.NewRDSService(awsClient.GetConfig(), cfg, log)
+	// Initialize RDS module with error handling
+	log.Info().Msg("Initializing RDS reporting module")
+	rdsService = rds.NewRDSService(awsClient.GetConfig(), cfg, log)
 	
-	// Create and register RDS report
+	// Create and register RDS report with error handling
 	rdsReport := rds.NewRDSReport(rdsService, log)
 	err = reportsManager.Register(rdsReport)
 	if err != nil {
-		log.WithError(err).Fatal().Msg("Failed to register RDS report")
+		log.WithError(err).Error().Msg("Failed to register RDS report - RDS reporting will be unavailable")
+		// Continue running but RDS reporting won't be available
+	} else {
+		log.Info().Msg("RDS reporting module registered successfully")
 	}
 
-	// Initialize handlers
+	// Log summary of registered reports
+	availableReports := reportsManager.ListReports()
+	log.WithField("report_count", len(availableReports)).Info().Msg("Reports framework initialization complete")
+
+	// Initialize handlers with proper null checks
+	log.Info().Msg("Initializing HTTP handlers")
 	healthHandler := handlers.NewHealthHandler()
-	costHandler := costs.NewCostHandler(costService, log)
-	applicationHandler := costs.NewApplicationHandler(applicationService, log)
-	rdsHandler := rds.NewRDSHandler(rdsService, log)
+	
+	// Initialize cost handlers (these should always be available)
+	if costService != nil && applicationService != nil {
+		costHandler = costs.NewCostHandler(costService, log)
+		applicationHandler = costs.NewApplicationHandler(applicationService, log)
+		log.Info().Msg("Cost and application handlers initialized")
+	} else {
+		log.Error().Msg("Cost services not available - cost handlers will not be initialized")
+	}
+
+	// Initialize RDS handlers (may not be available if AWS RDS is not accessible)
+	if rdsService != nil {
+		rdsHandler = rds.NewRDSHandler(rdsService, log)
+		log.Info().Msg("RDS handlers initialized")
+	} else {
+		log.Error().Msg("RDS service not available - RDS handlers will not be initialized")
+	}
 
 	router := setupRouter(cfg, log, healthHandler, costHandler, applicationHandler, rdsHandler, reportsManager)
 
@@ -181,29 +217,54 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 		// Health endpoint (keep at /api/health for backward compatibility)
 		api.GET("/health", healthHandler.HealthCheck)
 		
-		// Application endpoints
-		api.GET("/applications", applicationHandler.GetApplications)
-		api.GET("/applications/:name", applicationHandler.GetApplication)
-		api.GET("/applications/:name/services", applicationHandler.GetApplicationServices)
-		
-		// Legacy cost endpoints (keep for backwards compatibility)
-		api.GET("/costs", costHandler.GetCostSummary)
-		
-		// Cost module endpoints
-		costs := api.Group("/costs")
-		{
-			costs.GET("/summary", costHandler.GetCostSummary)
+		// Application endpoints (only register if handlers are available)
+		if applicationHandler != nil {
+			api.GET("/applications", applicationHandler.GetApplications)
+			api.GET("/applications/:name", applicationHandler.GetApplication)
+			api.GET("/applications/:name/services", applicationHandler.GetApplicationServices)
+		} else {
+			// Provide service unavailable responses
+			api.GET("/applications", getServiceUnavailableHandler("Applications service unavailable", log))
+			api.GET("/applications/:name", getServiceUnavailableHandler("Applications service unavailable", log))
+			api.GET("/applications/:name/services", getServiceUnavailableHandler("Applications service unavailable", log))
 		}
 		
-		// RDS endpoints
-		rds := api.Group("/rds")
-		{
-			rds.GET("/health", rdsHandler.GetHealth)
-			rds.GET("/summary", rdsHandler.GetSummary)
-			rds.GET("/instances", rdsHandler.GetInstances)
-			rds.GET("/instances/:id", rdsHandler.GetInstance)
-			rds.GET("/versions", rdsHandler.GetVersions)
-			rds.GET("/outdated", rdsHandler.GetOutdated)
+		// Legacy cost endpoints (keep for backwards compatibility)
+		if costHandler != nil {
+			api.GET("/costs", costHandler.GetCostSummary)
+			
+			// Cost module endpoints
+			costs := api.Group("/costs")
+			{
+				costs.GET("/summary", costHandler.GetCostSummary)
+			}
+		} else {
+			// Provide service unavailable responses
+			api.GET("/costs", getServiceUnavailableHandler("Cost service unavailable", log))
+		}
+		
+		// RDS endpoints (only register if handler is available)
+		if rdsHandler != nil {
+			rds := api.Group("/rds")
+			{
+				rds.GET("/health", rdsHandler.GetHealth)
+				rds.GET("/summary", rdsHandler.GetSummary)
+				rds.GET("/instances", rdsHandler.GetInstances)
+				rds.GET("/instances/:id", rdsHandler.GetInstance)
+				rds.GET("/versions", rdsHandler.GetVersions)
+				rds.GET("/outdated", rdsHandler.GetOutdated)
+			}
+		} else {
+			// Provide service unavailable responses for RDS endpoints
+			rds := api.Group("/rds")
+			{
+				rds.GET("/health", getServiceUnavailableHandler("RDS service unavailable", log))
+				rds.GET("/summary", getServiceUnavailableHandler("RDS service unavailable", log))
+				rds.GET("/instances", getServiceUnavailableHandler("RDS service unavailable", log))
+				rds.GET("/instances/:id", getServiceUnavailableHandler("RDS service unavailable", log))
+				rds.GET("/versions", getServiceUnavailableHandler("RDS service unavailable", log))
+				rds.GET("/outdated", getServiceUnavailableHandler("RDS service unavailable", log))
+			}
 		}
 		
 		// Reports endpoints
@@ -226,10 +287,24 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 
 	// Web pages
 	router.GET("/", getDashboardPage)
-	router.GET("/applications", applicationHandler.GetApplicationsPage)
-	router.GET("/applications/:name", applicationHandler.GetApplicationPage)
-	router.GET("/rds", rdsHandler.GetInstancesPage)
-	router.GET("/rds/:id", rdsHandler.GetInstancePage)
+	
+	// Application pages (only register if handlers are available)
+	if applicationHandler != nil {
+		router.GET("/applications", applicationHandler.GetApplicationsPage)
+		router.GET("/applications/:name", applicationHandler.GetApplicationPage)
+	} else {
+		router.GET("/applications", getServiceUnavailablePageHandler("Applications service unavailable", log))
+		router.GET("/applications/:name", getServiceUnavailablePageHandler("Applications service unavailable", log))
+	}
+	
+	// RDS pages (only register if handlers are available)
+	if rdsHandler != nil {
+		router.GET("/rds", rdsHandler.GetInstancesPage)
+		router.GET("/rds/:id", rdsHandler.GetInstancePage)
+	} else {
+		router.GET("/rds", getServiceUnavailablePageHandler("RDS service unavailable", log))
+		router.GET("/rds/:id", getServiceUnavailablePageHandler("RDS service unavailable", log))
+	}
 
 	return router
 }
@@ -349,4 +424,38 @@ func getDashboardPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "dashboard.html", gin.H{
 		"title": "GOV.UK Reports Dashboard",
 	})
+}
+
+// Helper functions for handling service unavailable scenarios
+
+// getServiceUnavailableHandler returns a JSON response for unavailable API endpoints
+func getServiceUnavailableHandler(message string, log *logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		log.WithFields(map[string]interface{}{
+			"path":   c.Request.URL.Path,
+			"method": c.Request.Method,
+		}).Warn().Msg("Service unavailable - handler not initialized")
+		
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "service_unavailable",
+			"message": message,
+			"code":    http.StatusServiceUnavailable,
+		})
+	}
+}
+
+// getServiceUnavailablePageHandler returns an HTML error page for unavailable web pages
+func getServiceUnavailablePageHandler(message string, log *logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		log.WithFields(map[string]interface{}{
+			"path":   c.Request.URL.Path,
+			"method": c.Request.Method,
+		}).Warn().Msg("Service unavailable - handler not initialized")
+		
+		c.HTML(http.StatusServiceUnavailable, "error.html", gin.H{
+			"title":   "Service Unavailable",
+			"error":   message,
+			"message": "This service is currently unavailable. Please try again later.",
+		})
+	}
 }
