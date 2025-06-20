@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" class="govuk-template">
+<head>
+    <meta charset="utf-8">
+    <title>{{.title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0c0c">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+</head>
+
+<body class="govuk-template__body">
+    <script>document.body.className = ((document.body.className) ? document.body.className + ' js-enabled' : 'js-enabled');</script>
+
+    <header class="govuk-header" role="banner" data-module="govuk-header">
+        <div class="govuk-header__container govuk-width-container">
+            <div class="govuk-header__logo">
+                <a href="/" class="govuk-header__link govuk-header__link--homepage">
+                    <span class="govuk-header__logotype">
+                        <span class="govuk-header__logotype-text">GOV.UK</span>
+                    </span>
+                </a>
+            </div>
+            <div class="govuk-header__content">
+                <a href="/" class="govuk-header__link govuk-header__link--service-name">
+                    Reports Dashboard
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="govuk-width-container">
+        <main class="govuk-main-wrapper" id="main-content" role="main">
+            
+            <!-- Breadcrumbs -->
+            <div class="govuk-breadcrumbs">
+                <ol class="govuk-breadcrumbs__list">
+                    <li class="govuk-breadcrumbs__list-item">
+                        <a class="govuk-breadcrumbs__link" href="/">Dashboard</a>
+                    </li>
+                    <li class="govuk-breadcrumbs__list-item">
+                        PostgreSQL Instances
+                    </li>
+                </ol>
+            </div>
+
+            <!-- Page Header -->
+            <div class="govuk-grid-row">
+                <div class="govuk-grid-column-full">
+                    <h1 class="govuk-heading-xl">PostgreSQL Instances</h1>
+                    <p class="govuk-body-l">Monitor PostgreSQL RDS instances and their version compliance across GOV.UK</p>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="govuk-grid-row" id="summary-cards">
+                <div class="govuk-grid-column-one-quarter">
+                    <div class="rds-summary-card">
+                        <h3 class="govuk-heading-s">Total Instances</h3>
+                        <p class="rds-metric-value" id="total-instances">Loading...</p>
+                        <p class="rds-metric-subtitle">PostgreSQL databases</p>
+                    </div>
+                </div>
+                <div class="govuk-grid-column-one-quarter">
+                    <div class="rds-summary-card rds-summary-card--critical">
+                        <h3 class="govuk-heading-s">End-of-Life</h3>
+                        <p class="rds-metric-value critical" id="eol-instances">Loading...</p>
+                        <p class="rds-metric-subtitle">Requires immediate action</p>
+                    </div>
+                </div>
+                <div class="govuk-grid-column-one-quarter">
+                    <div class="rds-summary-card rds-summary-card--warning">
+                        <h3 class="govuk-heading-s">Outdated</h3>
+                        <p class="rds-metric-value warning" id="outdated-instances">Loading...</p>
+                        <p class="rds-metric-subtitle">Updates recommended</p>
+                    </div>
+                </div>
+                <div class="govuk-grid-column-one-quarter">
+                    <div class="rds-summary-card rds-summary-card--success">
+                        <h3 class="govuk-heading-s">Compliance</h3>
+                        <p class="rds-metric-value success" id="compliance-rate">Loading...</p>
+                        <p class="rds-metric-subtitle">Version compliance</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="govuk-grid-row">
+                <div class="govuk-grid-column-full">
+                    <div class="rds-filters">
+                        <div class="govuk-form-group">
+                            <label class="govuk-label" for="search-instances">
+                                Search instances
+                            </label>
+                            <input class="govuk-input" id="search-instances" name="search" type="text" 
+                                   placeholder="Search by instance ID, application, or version...">
+                        </div>
+                        
+                        <div class="filter-buttons">
+                            <button class="govuk-button govuk-button--secondary active" data-filter="all" id="filter-all">
+                                All Instances
+                            </button>
+                            <button class="govuk-button govuk-button--secondary" data-filter="compliant" id="filter-compliant">
+                                Compliant
+                            </button>
+                            <button class="govuk-button govuk-button--secondary" data-filter="outdated" id="filter-outdated">
+                                Outdated
+                            </button>
+                            <button class="govuk-button govuk-button--secondary" data-filter="eol" id="filter-eol">
+                                End-of-Life
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="govuk-grid-row">
+                <div class="govuk-grid-column-full">
+                    <div class="action-buttons">
+                        <a href="/api/rds/instances" class="govuk-button govuk-button--secondary" target="_blank">
+                            Export Data (JSON)
+                        </a>
+                        <a href="/api/rds/versions" class="govuk-button govuk-button--secondary" target="_blank">
+                            Version Check Results
+                        </a>
+                        <a href="/api/rds/outdated" class="govuk-button govuk-button--secondary" target="_blank">
+                            Outdated Instances Report
+                        </a>
+                        <button class="govuk-button govuk-button--secondary" id="refresh-data">
+                            Refresh Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="loading-container">
+                <div class="loading-spinner"></div>
+                <p class="govuk-body">Loading PostgreSQL instances...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="error-container" style="display: none;">
+                <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert">
+                    <h2 class="govuk-error-summary__title" id="error-summary-title">
+                        There is a problem
+                    </h2>
+                    <div class="govuk-error-summary__body">
+                        <p id="error-message">Failed to load PostgreSQL instances. Please try again.</p>
+                        <button class="govuk-button govuk-button--secondary" id="retry-button">
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instances Table -->
+            <div class="govuk-grid-row" id="instances-container" style="display: none;">
+                <div class="govuk-grid-column-full">
+                    <div class="table-container">
+                        <table class="govuk-table rds-instances-table" id="instances-table">
+                            <thead class="govuk-table__head">
+                                <tr class="govuk-table__row">
+                                    <th scope="col" class="govuk-table__header sortable" data-sort="instance_id">
+                                        Instance ID
+                                        <span class="sort-arrow"></span>
+                                    </th>
+                                    <th scope="col" class="govuk-table__header sortable" data-sort="application">
+                                        Application
+                                        <span class="sort-arrow"></span>
+                                    </th>
+                                    <th scope="col" class="govuk-table__header sortable" data-sort="environment">
+                                        Environment
+                                        <span class="sort-arrow"></span>
+                                    </th>
+                                    <th scope="col" class="govuk-table__header sortable" data-sort="version">
+                                        Version
+                                        <span class="sort-arrow"></span>
+                                    </th>
+                                    <th scope="col" class="govuk-table__header">
+                                        Compliance Status
+                                    </th>
+                                    <th scope="col" class="govuk-table__header sortable" data-sort="instance_class">
+                                        Instance Class
+                                        <span class="sort-arrow"></span>
+                                    </th>
+                                    <th scope="col" class="govuk-table__header sortable" data-sort="region">
+                                        Region
+                                        <span class="sort-arrow"></span>
+                                    </th>
+                                    <th scope="col" class="govuk-table__header">
+                                        Status
+                                    </th>
+                                    <th scope="col" class="govuk-table__header">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="govuk-table__body" id="instances-tbody">
+                                <!-- Instances will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Table Footer with Stats -->
+                    <div class="table-footer">
+                        <p class="govuk-body-s">
+                            Showing <span id="visible-count">0</span> of <span id="total-count">0</span> instances
+                            <span id="filter-info"></span>
+                        </p>
+                    </div>
+
+                    <!-- No Results State -->
+                    <div id="no-results" class="no-results" style="display: none;">
+                        <h3 class="govuk-heading-m">No instances found</h3>
+                        <p class="govuk-body">Try adjusting your search terms or filters.</p>
+                        <button class="govuk-button govuk-button--secondary" id="clear-filters">
+                            Clear all filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Version Distribution Chart (Placeholder) -->
+            <div class="govuk-grid-row" id="version-chart-container" style="display: none;">
+                <div class="govuk-grid-column-full">
+                    <h2 class="govuk-heading-l">Version Distribution</h2>
+                    <div class="chart-placeholder">
+                        <p class="govuk-body">Version distribution chart would be displayed here in a full implementation.</p>
+                        <div id="version-summary">
+                            <!-- Version summary will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <footer class="govuk-footer" role="contentinfo">
+        <div class="govuk-width-container">
+            <div class="govuk-footer__meta">
+                <div class="govuk-footer__meta-item govuk-footer__meta-item--grow">
+                    <h2 class="govuk-visually-hidden">Support links</h2>
+                    <ul class="govuk-footer__inline-list">
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="/api/health">API Health</a>
+                        </li>
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="/api/rds/health">RDS Health</a>
+                        </li>
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="https://github.com/alphagov">GOV.UK on GitHub</a>
+                        </li>
+                    </ul>
+                    <div class="govuk-footer__meta-custom">
+                        Built with ❤️ for GOV.UK
+                    </div>
+                </div>
+                <div class="govuk-footer__meta-item">
+                    <a class="govuk-footer__link govuk-footer__copyright-logo" href="https://www.nationalarchives.gov.uk/information-management/re-using-public-sector-information/uk-government-licensing-framework/crown-copyright/">
+                        © Crown copyright
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/rds.js"></script>
+</body>
+</html>

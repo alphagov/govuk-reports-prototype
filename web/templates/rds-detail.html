@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en" class="govuk-template">
+<head>
+    <meta charset="utf-8">
+    <title>{{.title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0c0c">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+</head>
+
+<body class="govuk-template__body">
+    <script>document.body.className = ((document.body.className) ? document.body.className + ' js-enabled' : 'js-enabled');</script>
+
+    <header class="govuk-header" role="banner" data-module="govuk-header">
+        <div class="govuk-header__container govuk-width-container">
+            <div class="govuk-header__logo">
+                <a href="/" class="govuk-header__link govuk-header__link--homepage">
+                    <span class="govuk-header__logotype">
+                        <span class="govuk-header__logotype-text">GOV.UK</span>
+                    </span>
+                </a>
+            </div>
+            <div class="govuk-header__content">
+                <a href="/" class="govuk-header__link govuk-header__link--service-name">
+                    Reports Dashboard
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="govuk-width-container">
+        <main class="govuk-main-wrapper" id="main-content" role="main">
+            
+            <!-- Breadcrumbs -->
+            <div class="govuk-breadcrumbs">
+                <ol class="govuk-breadcrumbs__list">
+                    <li class="govuk-breadcrumbs__list-item">
+                        <a class="govuk-breadcrumbs__link" href="/">Dashboard</a>
+                    </li>
+                    <li class="govuk-breadcrumbs__list-item">
+                        <a class="govuk-breadcrumbs__link" href="/rds">PostgreSQL Instances</a>
+                    </li>
+                    <li class="govuk-breadcrumbs__list-item">
+                        <span id="breadcrumb-instance-id">{{.instance_id}}</span>
+                    </li>
+                </ol>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="loading-container">
+                <div class="loading-spinner"></div>
+                <p class="govuk-body">Loading instance details...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="error-container" style="display: none;">
+                <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert">
+                    <h2 class="govuk-error-summary__title" id="error-summary-title">
+                        There is a problem
+                    </h2>
+                    <div class="govuk-error-summary__body">
+                        <p id="error-message">Failed to load instance details. Please try again.</p>
+                        <button class="govuk-button govuk-button--secondary" id="retry-button">
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instance Details -->
+            <div id="instance-container" style="display: none;">
+                
+                <!-- Page Header -->
+                <div class="govuk-grid-row">
+                    <div class="govuk-grid-column-two-thirds">
+                        <h1 class="govuk-heading-xl" id="instance-title">PostgreSQL Instance</h1>
+                        <p class="govuk-body-l" id="instance-description">Instance details and version compliance information</p>
+                    </div>
+                    <div class="govuk-grid-column-one-third">
+                        <div class="instance-status-card" id="status-card">
+                            <h3 class="govuk-heading-s">Compliance Status</h3>
+                            <p class="status-indicator" id="compliance-status">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alert Banners -->
+                <div class="govuk-grid-row">
+                    <div class="govuk-grid-column-full">
+                        <div id="eol-warning" class="govuk-warning-text" style="display: none;">
+                            <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+                            <strong class="govuk-warning-text__text">
+                                <span class="govuk-warning-text__assistive">Warning</span>
+                                This PostgreSQL version is end-of-life and should be upgraded immediately.
+                            </strong>
+                        </div>
+                        
+                        <div id="outdated-notification" class="govuk-notification-banner" style="display: none;">
+                            <div class="govuk-notification-banner__header">
+                                <h2 class="govuk-notification-banner__title" id="govuk-notification-banner-title">
+                                    Information
+                                </h2>
+                            </div>
+                            <div class="govuk-notification-banner__content">
+                                <p class="govuk-notification-banner__heading">
+                                    This PostgreSQL version is outdated. Consider upgrading to a newer version.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instance Information -->
+                <div class="govuk-grid-row">
+                    <div class="govuk-grid-column-full">
+                        <h2 class="govuk-heading-l">Instance Information</h2>
+                        
+                        <dl class="govuk-summary-list">
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Instance ID</dt>
+                                <dd class="govuk-summary-list__value" id="detail-instance-id">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Database Name</dt>
+                                <dd class="govuk-summary-list__value" id="detail-db-name">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Application</dt>
+                                <dd class="govuk-summary-list__value" id="detail-application">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Environment</dt>
+                                <dd class="govuk-summary-list__value" id="detail-environment">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Instance Status</dt>
+                                <dd class="govuk-summary-list__value" id="detail-status">Loading...</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Version Information -->
+                <div class="govuk-grid-row">
+                    <div class="govuk-grid-column-full">
+                        <h2 class="govuk-heading-l">Version Information</h2>
+                        
+                        <dl class="govuk-summary-list">
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">PostgreSQL Version</dt>
+                                <dd class="govuk-summary-list__value" id="detail-version">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Major Version</dt>
+                                <dd class="govuk-summary-list__value" id="detail-major-version">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">End-of-Life Status</dt>
+                                <dd class="govuk-summary-list__value" id="detail-eol-status">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">EOL Date</dt>
+                                <dd class="govuk-summary-list__value" id="detail-eol-date">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Recommended Action</dt>
+                                <dd class="govuk-summary-list__value" id="detail-recommended-action">Loading...</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Technical Specifications -->
+                <div class="govuk-grid-row">
+                    <div class="govuk-grid-column-full">
+                        <h2 class="govuk-heading-l">Technical Specifications</h2>
+                        
+                        <dl class="govuk-summary-list">
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Instance Class</dt>
+                                <dd class="govuk-summary-list__value" id="detail-instance-class">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Engine</dt>
+                                <dd class="govuk-summary-list__value" id="detail-engine">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Allocated Storage</dt>
+                                <dd class="govuk-summary-list__value" id="detail-storage">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Storage Type</dt>
+                                <dd class="govuk-summary-list__value" id="detail-storage-type">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Multi-AZ</dt>
+                                <dd class="govuk-summary-list__value" id="detail-multi-az">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Publicly Accessible</dt>
+                                <dd class="govuk-summary-list__value" id="detail-public">Loading...</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Location Information -->
+                <div class="govuk-grid-row">
+                    <div class="govuk-grid-column-full">
+                        <h2 class="govuk-heading-l">Location</h2>
+                        
+                        <dl class="govuk-summary-list">
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Region</dt>
+                                <dd class="govuk-summary-list__value" id="detail-region">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Availability Zone</dt>
+                                <dd class="govuk-summary-list__value" id="detail-az">Loading...</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Timestamps -->
+                <div class="govuk-grid-row">
+                    <div class="govuk-grid-column-full">
+                        <h2 class="govuk-heading-l">Timestamps</h2>
+                        
+                        <dl class="govuk-summary-list">
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Created At</dt>
+                                <dd class="govuk-summary-list__value" id="detail-created-at">Loading...</dd>
+                            </div>
+                            <div class="govuk-summary-list__row">
+                                <dt class="govuk-summary-list__key">Last Modified</dt>
+                                <dd class="govuk-summary-list__value" id="detail-last-modified">Loading...</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="govuk-grid-row">
+                    <div class="govuk-grid-column-full">
+                        <h2 class="govuk-heading-l">Actions</h2>
+                        
+                        <div class="action-buttons">
+                            <a href="/rds" class="govuk-button govuk-button--secondary">
+                                Back to All Instances
+                            </a>
+                            <a href="#" class="govuk-button govuk-button--secondary" id="api-link" target="_blank">
+                                View API Data
+                            </a>
+                            <button class="govuk-button govuk-button--secondary" id="refresh-instance">
+                                Refresh Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <footer class="govuk-footer" role="contentinfo">
+        <div class="govuk-width-container">
+            <div class="govuk-footer__meta">
+                <div class="govuk-footer__meta-item govuk-footer__meta-item--grow">
+                    <h2 class="govuk-visually-hidden">Support links</h2>
+                    <ul class="govuk-footer__inline-list">
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="/api/health">API Health</a>
+                        </li>
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="/api/rds/health">RDS Health</a>
+                        </li>
+                        <li class="govuk-footer__inline-list-item">
+                            <a class="govuk-footer__link" href="https://github.com/alphagov">GOV.UK on GitHub</a>
+                        </li>
+                    </ul>
+                    <div class="govuk-footer__meta-custom">
+                        Built with ❤️ for GOV.UK
+                    </div>
+                </div>
+                <div class="govuk-footer__meta-item">
+                    <a class="govuk-footer__link govuk-footer__copyright-logo" href="https://www.nationalarchives.gov.uk/information-management/re-using-public-sector-information/uk-government-licensing-framework/crown-copyright/">
+                        © Crown copyright
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Get instance ID from URL path
+        const pathParts = window.location.pathname.split('/');
+        const instanceId = pathParts[pathParts.length - 1];
+        
+        // RDS Detail Page JavaScript
+        class RDSDetailPage {
+            constructor(instanceId) {
+                this.instanceId = instanceId;
+                this.instance = null;
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.loadInstanceData();
+            }
+
+            setupEventListeners() {
+                const retryButton = document.getElementById('retry-button');
+                if (retryButton) {
+                    retryButton.addEventListener('click', () => {
+                        this.loadInstanceData();
+                    });
+                }
+
+                const refreshButton = document.getElementById('refresh-instance');
+                if (refreshButton) {
+                    refreshButton.addEventListener('click', () => {
+                        this.loadInstanceData();
+                    });
+                }
+            }
+
+            async loadInstanceData() {
+                this.showLoading();
+                this.hideError();
+
+                try {
+                    const response = await fetch(`/api/rds/instances/${encodeURIComponent(this.instanceId)}`);
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            throw new Error('PostgreSQL instance not found');
+                        }
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    this.instance = await response.json();
+                    this.populateInstanceDetails();
+                    this.showInstanceContainer();
+                    this.hideLoading();
+
+                } catch (error) {
+                    console.error('Failed to load instance data:', error);
+                    this.showError(error.message);
+                    this.hideLoading();
+                }
+            }
+
+            populateInstanceDetails() {
+                const instance = this.instance;
+                
+                // Update page title and header
+                document.getElementById('instance-title').textContent = `PostgreSQL Instance: ${instance.instance_id}`;
+                document.getElementById('instance-description').textContent = 
+                    `${instance.application || 'Unknown Application'} • ${instance.environment || 'Unknown Environment'}`;
+
+                // Compliance status
+                this.updateComplianceStatus(instance);
+
+                // Alerts
+                this.updateAlerts(instance);
+
+                // Instance Information
+                document.getElementById('detail-instance-id').textContent = instance.instance_id;
+                document.getElementById('detail-db-name').textContent = instance.name || 'N/A';
+                document.getElementById('detail-application').textContent = instance.application || 'Unknown';
+                document.getElementById('detail-environment').textContent = instance.environment || 'Unknown';
+                document.getElementById('detail-status').textContent = instance.status;
+
+                // Version Information
+                document.getElementById('detail-version').textContent = instance.version;
+                document.getElementById('detail-major-version').textContent = instance.major_version;
+                document.getElementById('detail-eol-status').textContent = instance.is_eol ? 'Yes' : 'No';
+                document.getElementById('detail-eol-date').textContent = 
+                    instance.eol_date ? new Date(instance.eol_date).toLocaleDateString() : 'N/A';
+                
+                // Recommended action (would come from version check results)
+                this.updateRecommendedAction(instance);
+
+                // Technical Specifications
+                document.getElementById('detail-instance-class').textContent = instance.instance_class || 'N/A';
+                document.getElementById('detail-engine').textContent = instance.engine || 'PostgreSQL';
+                document.getElementById('detail-storage').textContent = 
+                    instance.allocated_storage ? `${instance.allocated_storage} GB` : 'N/A';
+                document.getElementById('detail-storage-type').textContent = instance.storage_type || 'N/A';
+                document.getElementById('detail-multi-az').textContent = instance.multi_az ? 'Yes' : 'No';
+                document.getElementById('detail-public').textContent = instance.publicly_accessible ? 'Yes' : 'No';
+
+                // Location
+                document.getElementById('detail-region').textContent = instance.region || 'N/A';
+                document.getElementById('detail-az').textContent = instance.availability_zone || 'N/A';
+
+                // Timestamps
+                document.getElementById('detail-created-at').textContent = 
+                    instance.created_at ? new Date(instance.created_at).toLocaleString() : 'N/A';
+                document.getElementById('detail-last-modified').textContent = 
+                    instance.last_modified ? new Date(instance.last_modified).toLocaleString() : 'N/A';
+
+                // Update API link
+                document.getElementById('api-link').href = `/api/rds/instances/${encodeURIComponent(this.instanceId)}`;
+            }
+
+            updateComplianceStatus(instance) {
+                const statusEl = document.getElementById('compliance-status');
+                const cardEl = document.getElementById('status-card');
+                
+                if (instance.is_eol) {
+                    statusEl.textContent = 'End-of-Life';
+                    statusEl.className = 'status-indicator critical';
+                    cardEl.className = 'instance-status-card instance-status-card--critical';
+                } else {
+                    // Could add logic for outdated detection
+                    statusEl.textContent = 'Compliant';
+                    statusEl.className = 'status-indicator success';
+                    cardEl.className = 'instance-status-card instance-status-card--success';
+                }
+            }
+
+            updateAlerts(instance) {
+                const eolWarning = document.getElementById('eol-warning');
+                const outdatedNotification = document.getElementById('outdated-notification');
+                
+                if (instance.is_eol) {
+                    eolWarning.style.display = 'block';
+                    outdatedNotification.style.display = 'none';
+                } else {
+                    // Could add logic for outdated detection
+                    eolWarning.style.display = 'none';
+                    outdatedNotification.style.display = 'none';
+                }
+            }
+
+            updateRecommendedAction(instance) {
+                const actionEl = document.getElementById('detail-recommended-action');
+                
+                if (instance.is_eol) {
+                    actionEl.textContent = 'Critical: Upgrade immediately - version is end-of-life';
+                    actionEl.className = 'govuk-summary-list__value critical';
+                } else {
+                    actionEl.textContent = 'No action needed - version is current';
+                    actionEl.className = 'govuk-summary-list__value success';
+                }
+            }
+
+            showLoading() {
+                document.getElementById('loading-state').style.display = 'block';
+            }
+
+            hideLoading() {
+                document.getElementById('loading-state').style.display = 'none';
+            }
+
+            showError(message) {
+                const errorState = document.getElementById('error-state');
+                const errorMessage = document.getElementById('error-message');
+                
+                if (errorState) errorState.style.display = 'block';
+                if (errorMessage) errorMessage.textContent = message;
+            }
+
+            hideError() {
+                const errorState = document.getElementById('error-state');
+                if (errorState) errorState.style.display = 'none';
+            }
+
+            showInstanceContainer() {
+                document.getElementById('instance-container').style.display = 'block';
+            }
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new RDSDetailPage(instanceId);
+        });
+    </script>
+
+    <style>
+        .instance-status-card {
+            border: 2px solid #b1b4b6;
+            border-radius: 4px;
+            padding: 15px;
+            text-align: center;
+            background: #ffffff;
+        }
+        
+        .instance-status-card--success {
+            border-color: #00703c;
+            background-color: #f3fff3;
+        }
+        
+        .instance-status-card--critical {
+            border-color: #d4351c;
+            background-color: #fff5f5;
+        }
+        
+        .status-indicator {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .status-indicator.success {
+            color: #00703c;
+        }
+        
+        .status-indicator.critical {
+            color: #d4351c;
+        }
+        
+        .govuk-summary-list__value.critical {
+            color: #d4351c;
+            font-weight: bold;
+        }
+        
+        .govuk-summary-list__value.success {
+            color: #00703c;
+            font-weight: bold;
+        }
+        
+        .action-buttons {
+            margin: 20px 0;
+        }
+        
+        .action-buttons .govuk-button {
+            margin-right: 15px;
+            margin-bottom: 10px;
+        }
+    </style>
+</body>
+</html>

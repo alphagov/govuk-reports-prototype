@@ -188,16 +188,16 @@ func (h *RDSHandler) GetSummary(c *gin.Context) {
 	c.JSON(http.StatusOK, summaryResponse)
 }
 
-// GetInstancesPage handles GET /rds - serves the RDS dashboard page
+// GetInstancesPage handles GET /rds - serves the RDS instances table page
 func (h *RDSHandler) GetInstancesPage(c *gin.Context) {
-	h.logger.Info().Msg("Serving RDS instances dashboard page")
+	h.logger.Info().Msg("Serving RDS instances table page")
 	
-	c.HTML(http.StatusOK, "rds.html", gin.H{
-		"title": "PostgreSQL Version Checker - GOV.UK Reports Dashboard",
+	c.HTML(http.StatusOK, "rds-instances.html", gin.H{
+		"title": "PostgreSQL Instances - GOV.UK Reports Dashboard",
 	})
 }
 
-// GetInstancePage handles GET /rds/{id} - serves individual instance page
+// GetInstancePage handles GET /rds/{id} - serves individual instance detail page
 func (h *RDSHandler) GetInstancePage(c *gin.Context) {
 	instanceID := c.Param("id")
 	if instanceID == "" {
@@ -210,7 +210,7 @@ func (h *RDSHandler) GetInstancePage(c *gin.Context) {
 
 	h.logger.WithField("instance_id", instanceID).Info().Msg("Serving RDS instance detail page")
 	
-	c.HTML(http.StatusOK, "rds-instance.html", gin.H{
+	c.HTML(http.StatusOK, "rds-detail.html", gin.H{
 		"title":       "PostgreSQL Instance - " + instanceID,
 		"instance_id": instanceID,
 	})
