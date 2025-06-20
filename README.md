@@ -1,8 +1,8 @@
-# 🏛️ GOV.UK Web, Publishing and Platform Reports Dashboard
+# 🏛️ GOV.UK Reports Dashboard
 
-> Not yet ready for production. This application is a proof of concept.
+> A reporting dashboard for monitoring GOV.UK services and infrastructure
 
-A Go web application for monitoring and displaying reports for GOV.UK Web, Publishing and Platform services with dashboards and API integration.
+A Go app providing reporting capabilities for GOV.UK Web, Publishing, and Platform services. The dashboard integrates multiple monitoring systems and provides both web interfaces and REST APIs for infrastructure and application services.
 
 ![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)
 ![License](https://img.shields.io/badge/License-Crown%20Copyright-gold.svg)
@@ -10,293 +10,420 @@ A Go web application for monitoring and displaying reports for GOV.UK Web, Publi
 
 ## ✨ Features
 
-- Real-time integration with AWS Cost Explorer API
-- Grouped by application/service hosted on the GOV.UK Platform.
+### **Unified Dashboard**
 
-## Architecture
+- **Multi-module reporting** with consistent interface
+- **Real-time data loading** from multiple sources
+
+### 💰 **Cost Reporting Module**
+
+- **AWS Cost Explorer integration** for real-time cost monitoring
+- **Application-level cost breakdown** grouped by GOV.UK services
+
+### 🗄️ **RDS Version Checker Module**
+
+- **PostgreSQL instance discovery** from AWS RDS
+- **Version compliance monitoring** with EOL tracking
+- **End-of-life detection** with immediate alerts
+- **Detailed instance specifications** and metadata
+
+## 🏗️ Architecture
+
+### **Modular Reports Framework**
 
 ```
-├── cmd/server/          # Application entry point
+📊 Reports Dashboard
+├── 💰 Cost Reporter (AWS Cost Explorer)
+├── 🗄️ RDS Version Checker (PostgreSQL monitoring)
+└── 🔌 Extensible framework for new modules
+```
+
+### **Directory Structure**
+
+```
+├── cmd/server/              # Application entry point
 ├── internal/
-│   ├── config/         # Configuration management
-│   ├── handlers/       # HTTP handlers and middleware
-│   ├── models/         # Data structures
-│   └── services/       # Business logic
+│   ├── config/             # Configuration management
+│   ├── handlers/           # Core HTTP handlers and middleware
+│   ├── models/             # Shared data structures
+│   ├── modules/            # Report modules
+│   │   ├── costs/          # Cost reporting module
+│   │   └── rds/            # RDS monitoring module
+│   └── reports/            # Reports framework
+│       ├── types.go        # Report interfaces
+│       ├── manager.go      # Module registry
+│       ├── renderer.go     # Common utilities
+│       └── cache.go        # Caching system
 ├── pkg/
-│   ├── aws/           # AWS client
-│   └── govuk/         # GOV.UK API client
+│   ├── aws/               # AWS client integration
+│   ├── govuk/             # GOV.UK API client
+│   └── common/            # Shared types
 └── web/
-    ├── static/        # CSS/JS assets
-    └── templates/     # HTML templates
+    ├── static/            # CSS/JS assets
+    └── templates/         # HTML templates
 ```
 
-## Configuration
+## 🚀 Quick Start
 
-The application uses environment variables for configuration:
+### **Prerequisites**
 
-### Server Configuration
-- `PORT` - Server port (default: 8080)
-- `ENVIRONMENT` - Environment mode (default: development)
-- `READ_TIMEOUT` - HTTP read timeout in seconds (default: 30)
-- `WRITE_TIMEOUT` - HTTP write timeout in seconds (default: 30)
-
-### AWS Configuration
-- `AWS_REGION` - AWS region (default: eu-west-2)
-- `AWS_PROFILE` - AWS profile name to use from ~/.aws/credentials
-- `AWS_ACCESS_KEY_ID` - AWS access key (alternative to profile)
-- `AWS_SECRET_ACCESS_KEY` - AWS secret key (alternative to profile)
-- `AWS_SESSION_TOKEN` - AWS session token (optional)
-- `AWS_MFA_TOKEN` - MFA token for assume role operations (optional)
-
-### GOV.UK Configuration
-- `GOVUK_API_BASE_URL` - GOV.UK API base URL
-- `GOVUK_API_KEY` - GOV.UK API key
-
-### Logging Configuration
-- `LOG_LEVEL` - Log level (default: info)
-- `LOG_FORMAT` - Log format: json or text (default: json)
-
-## Running the Application
-
-### Prerequisites
 - Go 1.21 or later
-- AWS credentials configured (see AWS Configuration section)
-- Docker (optional)
+- AWS credentials configured
+- Access to AWS Cost Explorer API
+- Access to AWS RDS (optional)
 
-### AWS Credential Setup
+### **1. Setup Environment**
 
-The application supports multiple ways to configure AWS credentials:
-
-#### Option 1: AWS Profile (Recommended)
 ```bash
-# Set the profile name
+# Clone the repository
+git clone git://github.com/alphagov/govuk-reports-prototype.git
+cd govuk-reports-prototype
+
+# Install dependencies
+go mod tidy
+
+# Set up development environment
+make setup
+```
+
+### **2. Configure AWS Credentials**
+
+```bash
+# Option 1: AWS Profile (Recommended)
 export AWS_PROFILE=your-profile-name
 
-# Or create/update ~/.aws/credentials file:
-[your-profile-name]
-aws_access_key_id = YOUR_ACCESS_KEY
-aws_secret_access_key = YOUR_SECRET_KEY
-region = eu-west-2
-```
-
-#### Option 2: Environment Variables
-```bash
+# Option 2: Direct credentials
 export AWS_ACCESS_KEY_ID=your_access_key
 export AWS_SECRET_ACCESS_KEY=your_secret_key
 export AWS_REGION=eu-west-2
 ```
 
-#### MFA Support
-If your AWS profile requires MFA, the application supports it in two ways:
+### **3. Start the Application**
 
-**Interactive MFA (for development):**
-The application will prompt you for the MFA token when needed.
-
-**Non-interactive MFA (for automation):**
 ```bash
-export AWS_MFA_TOKEN=123456
-AWS_PROFILE=your-profile-name go run cmd/server/main.go
+# Using Make (recommended)
+make run
+
+# Or manually
+go run cmd/server/main.go
 ```
 
-### 🚀 Quick Start
+### **4. Access the Dashboard**
 
-The easiest way to get started is with our Makefile:
+Open your browser to `http://localhost:8080`
+
+## 🌐 API Reference
+
+### **Core Endpoints**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | 🎨 Main dashboard with all report modules |
+| `/api/health` | GET | 🏥 Service health check |
+
+### **Cost Reporting APIs**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/applications` | GET | 📋 List all applications with costs |
+| `/api/applications/{name}` | GET | 🔍 Get specific application details |
+| `/api/applications/{name}/services` | GET | ⚙️ Get application service breakdown |
+| `/api/costs` | GET | 💰 Legacy cost summary (backwards compatibility) |
+| `/api/costs/summary` | GET | 💰 Cost module summary |
+
+### **RDS Monitoring APIs**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/rds/health` | GET | 🏥 RDS service health check |
+| `/api/rds/summary` | GET | 📊 RDS summary statistics |
+| `/api/rds/instances` | GET | 🗄️ List PostgreSQL instances |
+| `/api/rds/instances/{id}` | GET | 🔍 Get specific instance details |
+| `/api/rds/versions` | GET | 📋 Version check results |
+| `/api/rds/outdated` | GET | ⚠️ Outdated/EOL instances |
+
+### **Reports Framework APIs**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/reports/list` | GET | 📋 List available reports with metadata |
+| `/api/reports/summary` | GET | 📊 Dashboard summary for all reports |
+| `/api/reports/{id}` | GET | 🔍 Get specific report by ID |
+| `/api/reports/costs` | GET | 💰 Cost report via framework |
+| `/api/reports/rds` | GET | 🗄️ RDS report via framework |
+
+## 🎯 Usage Examples
+
+### **Cost Reporting**
 
 ```bash
-# Set up your development environment
-make setup
+# Get all applications with costs
+curl http://localhost:8080/api/applications
 
-# Create environment configuration
-make env-example
-cp .env.example .env
-# Edit .env with your settings
+# Get specific application
+curl http://localhost:8080/api/applications/publishing-api
 
-# Run the application
-AWS_PROFILE=your-profile make run
+# Get cost summary
+curl http://localhost:8080/api/costs/summary
 ```
 
-### 🛠️ Development Commands
+**Example Response:**
 
-```bash
-# 🚀 Running
-make run                    # Run the application
-make run-example           # Run GOV.UK apps example
-make run-with-profile      # Run with specific AWS profile
-
-# 🧪 Testing  
-make test                  # Run all tests
-make test-coverage         # Generate coverage report
-make test-race             # Test with race detection
-make test-govuk           # Test GOV.UK client only
-
-# 🔧 Development
-make build                 # Build the application
-make fmt                   # Format code
-make vet                   # Run go vet
-make lint                  # Run linter
-make check                 # Run all quality checks
-
-# 🐳 Docker
-make docker-build          # Build Docker image
-make docker-run            # Run in container
-
-# 📖 Help
-make help                  # Show all available commands
+```json
+{
+  "applications": [
+    {
+      "name": "Publishing API",
+      "shortname": "publishing-api",
+      "team": "Publishing Platform",
+      "production_hosted_on": "EKS",
+      "total_cost": 1250.75,
+      "currency": "GBP",
+      "service_count": 12
+    }
+  ],
+  "total_cost": 15750.50,
+  "count": 24,
+  "currency": "GBP"
+}
 ```
 
-### Manual Development Setup
+### **RDS Version Checking**
 
-If you prefer manual setup:
-
-1. Clone the repository
-2. Install dependencies: `go mod tidy`
-3. Configure AWS credentials (see AWS Credential Setup above)
-4. Set environment variables (create a `.env` file or export them)
-5. Run: `go run cmd/server/main.go`
-
-The server will start on port 8080 by default.
-
-### 🐳 Using Docker
-
-Using the Makefile (recommended):
 ```bash
+# Get RDS summary
+curl http://localhost:8080/api/rds/summary
+
+# Get all PostgreSQL instances
+curl http://localhost:8080/api/rds/instances
+
+# Check version compliance
+curl http://localhost:8080/api/rds/versions
+```
+
+**Example Response:**
+
+```json
+{
+  "postgresql_count": 15,
+  "eol_instances": 2,
+  "outdated_instances": 3,
+  "version_summary": [
+    {
+      "major_version": "14",
+      "count": 8,
+      "is_eol": false,
+      "is_outdated": false
+    },
+    {
+      "major_version": "11",
+      "count": 2,
+      "is_eol": true,
+      "is_outdated": false
+    }
+  ]
+}
+```
+
+### **Reports Framework**
+
+```bash
+# Get all available reports
+curl http://localhost:8080/api/reports/list
+
+# Get unified dashboard summary
+curl http://localhost:8080/api/reports/summary
+
+# Get specific report
+curl http://localhost:8080/api/reports/costs
+```
+
+## 🔧 Adding New Report Modules
+
+The Reports Dashboard uses a modular architecture that makes it easy to add new report types.
+
+### **1. Create Module Structure**
+
+```bash
+mkdir -p internal/modules/yourmodule
+```
+
+### **2. Implement Report Interface**
+
+```go
+// internal/modules/yourmodule/report.go
+package yourmodule
+
+import (
+    "context"
+    "time"
+    "govuk-reports-dashboard/internal/reports"
+)
+
+type YourModuleReport struct {
+    service *YourModuleService
+    logger  *logger.Logger
+}
+
+func (r *YourModuleReport) GetMetadata() reports.ReportMetadata {
+    return reports.ReportMetadata{
+        ID:          "yourmodule",
+        Name:        "Your Module Name",
+        Description: "Description of what this module does",
+        Type:        reports.ReportTypeHealth,
+        Version:     "1.0.0",
+        Priority:    reports.PriorityMedium,
+    }
+}
+
+func (r *YourModuleReport) GenerateSummary(ctx context.Context, params reports.ReportParams) ([]reports.Summary, error) {
+    // Implement summary generation
+}
+
+func (r *YourModuleReport) GenerateReport(ctx context.Context, params reports.ReportParams) (reports.ReportData, error) {
+    // Implement detailed report generation
+}
+
+func (r *YourModuleReport) IsAvailable(ctx context.Context) bool {
+    // Check if the module can run
+}
+
+func (r *YourModuleReport) GetRefreshInterval() time.Duration {
+    return 15 * time.Minute
+}
+
+func (r *YourModuleReport) Validate(params reports.ReportParams) error {
+    // Validate parameters
+    return nil
+}
+```
+
+### **3. Register Module**
+
+```go
+// In cmd/server/main.go
+yourModuleService := yourmodule.NewService(dependencies...)
+yourModuleReport := yourmodule.NewReport(yourModuleService, log)
+
+err = reportsManager.Register(yourModuleReport)
+if err != nil {
+    log.WithError(err).Error().Msg("Failed to register your module")
+}
+```
+
+### **4. Add Routes**
+
+```go
+// Add API routes
+yourModule := api.Group("/yourmodule")
+{
+    yourModule.GET("/health", yourModuleHandler.GetHealth)
+    yourModule.GET("/summary", yourModuleHandler.GetSummary)
+}
+
+// Add web routes
+router.GET("/yourmodule", yourModuleHandler.GetPage)
+```
+
+## 🛠️ Development
+
+### **Quality Assurance**
+
+```bash
+# Run all quality checks
+make check
+
+# Run tests with coverage
+make test-coverage
+
+# Security scanning
+make security
+
+# Code formatting
+make fmt
+```
+
+### **Building & Running**
+
+```bash
+# Development mode
+make run
+
+# Build for production
+make build
+
+# Docker deployment
 make docker-build
 make docker-run
 ```
 
-Or manually:
+### **Environment Configuration**
+
 ```bash
-docker build -t govuk-reports-dashboard .
-docker run -p 8080:8080 \
-  -e AWS_REGION=eu-west-2 \
-  -e AWS_PROFILE=your-profile \
-  govuk-reports-dashboard
+# Copy example configuration
+make env-example
+cp .env.example .env
+
+# Edit configuration
+vim .env
 ```
 
-## 🌐 API Endpoints
+## 📊 Configuration
 
-### 📊 Web Interface
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | 🎨 Applications dashboard with search/filter |
-| `/applications/{name}` | GET | 📱 Application detail page with cost breakdown |
+### **Server Configuration**
 
-### 🔌 REST API  
-| Endpoint | Method | Description | Example |
-|----------|--------|-------------|---------|
-| `/api/health` | GET | 🏥 Health check endpoint | `curl http://localhost:8080/api/health` |
-| `/api/applications` | GET | 📋 List all applications with costs | `curl http://localhost:8080/api/applications` |
-| `/api/applications/{name}` | GET | 🔍 Get specific application details | `curl http://localhost:8080/api/applications/publishing-api` |
-| `/api/applications/{name}/services` | GET | ⚙️ Get application service breakdown | `curl http://localhost:8080/api/applications/publishing-api/services` |
-| `/api/costs` | GET | 💰 Legacy cost summary endpoint | `curl http://localhost:8080/api/costs` |
-| `/static/*` | GET | 📁 Static assets (CSS/JS) | `curl http://localhost:8080/static/css/dashboard.css` |
+- `PORT` - Server port (default: 8080)
+- `ENVIRONMENT` - Environment mode (default: development)
+- `READ_TIMEOUT` - HTTP read timeout (default: 30s)
+- `WRITE_TIMEOUT` - HTTP write timeout (default: 30s)
 
-## 🛠️ Development
+### **AWS Configuration**
 
-### 🔧 Adding New Features
+- `AWS_REGION` - AWS region (default: eu-west-2)
+- `AWS_PROFILE` - AWS profile for credentials
+- `AWS_ACCESS_KEY_ID` - Direct AWS access key
+- `AWS_SECRET_ACCESS_KEY` - Direct AWS secret key
 
-1. **Models**: Add data structures in `internal/models/`
-2. **Services**: Implement business logic in `internal/services/`
-3. **Handlers**: Create HTTP handlers in `internal/handlers/`
-4. **Routes**: Update routing in `cmd/server/main.go`
-5. **Tests**: Add tests alongside your code
+### **Reports Configuration**
 
-### 🧪 Testing
+- `REPORTS_CACHE_TTL` - Cache time-to-live (default: 15m)
+- `REPORTS_MAX_CONCURRENT` - Max concurrent reports (default: 10)
 
-```bash
-# Run all tests
-make test
+### **Logging Configuration**
 
-# Generate coverage report  
-make test-coverage
+- `LOG_LEVEL` - Log level (debug, info, warn, error)
+- `LOG_FORMAT` - Log format (json, text)
 
-# Test with race detection
-make test-race
+## 🔍 Monitoring & Health Checks
 
-# Quick tests only
-make test-short
-```
-
-### 🔨 Building
+### **Service Health**
 
 ```bash
-# Build main application
-make build
+# Overall system health
+curl http://localhost:8080/api/health
 
-# Build all binaries (including examples)
-make build-all
+# RDS service health
+curl http://localhost:8080/api/rds/health
 
-# Clean build artifacts
-make clean
-```
-## 📊 Quality Assurance
-
-Run comprehensive quality checks:
-
-```bash
-# Quick quality check
-make check
-
-# Full quality audit
-make check-all
-
-# Pre-commit checks
-make pre-commit
-
-# Security scanning (requires gosec)
-make security
+# Reports framework status
+curl http://localhost:8080/api/reports/list
 ```
 
 ## 🤝 Contributing
 
 1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Quality**: Run `make check-all` to ensure code quality
-4. **Commit**: Use conventional commits: `git commit -m 'feat: add amazing feature'`
-5. **Push**: `git push origin feature/amazing-feature`
-6. **PR**: Open a Pull Request with detailed description
-
-## 🆘 Troubleshooting
-
-### Common Issues
-
-**MFA Token Issues**
-```bash
-# Interactive MFA
-AWS_PROFILE=your-profile make run
-
-# Non-interactive MFA
-AWS_MFA_TOKEN=123456 AWS_PROFILE=your-profile make run
-```
-
-**Build Issues**
-```bash
-# Clean and rebuild
-make clean
-make deps
-make build
-```
-
-**Test Failures**
-```bash
-# Run specific test package
-make test-govuk
-make test-aws
-
-# Verbose test output
-go test -v ./pkg/govuk
-```
-
-### Getting Help
-
-- 📖 **Commands**: Run `make help` for all available commands
-- 🐹 **Fun**: Run `make gopher` for motivation
-- 📚 **Docs**: Run `make docs` to generate documentation
+2. **Create** a feature branch: `git checkout -b feature/new-module`
+3. **Implement** following the modular architecture
+4. **Test** thoroughly: `make test`
+5. **Quality** check: `make check-all`
+6. **Commit** with conventional commits
+7. **Submit** Pull Request
 
 ## 📜 License
 
-**Crown Copyright (C) 2024**
+**Crown Copyright (C) 2025**
 
-This project is licensed under the Crown Copyright. See the LICENSE file for details.
+This project is licensed under Crown Copyright. See the LICENSE file for details.
 
 ---
+
