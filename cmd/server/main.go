@@ -12,6 +12,7 @@ import (
 	"govuk-reports-dashboard/internal/config"
 	"govuk-reports-dashboard/internal/handlers"
 	"govuk-reports-dashboard/internal/modules/costs"
+	"govuk-reports-dashboard/internal/modules/rds"
 	"govuk-reports-dashboard/internal/reports"
 	"govuk-reports-dashboard/pkg/aws"
 	"govuk-reports-dashboard/pkg/govuk"
@@ -69,12 +70,23 @@ func main() {
 		log.WithError(err).Fatal().Msg("Failed to register cost report")
 	}
 
+	// Initialize RDS module services
+	rdsService := rds.NewRDSService(awsClient.GetConfig(), cfg, log)
+	
+	// Create and register RDS report
+	rdsReport := rds.NewRDSReport(rdsService, log)
+	err = reportsManager.Register(rdsReport)
+	if err != nil {
+		log.WithError(err).Fatal().Msg("Failed to register RDS report")
+	}
+
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler()
 	costHandler := costs.NewCostHandler(costService, log)
 	applicationHandler := costs.NewApplicationHandler(applicationService, log)
+	rdsHandler := rds.NewRDSHandler(rdsService, log)
 
-	router := setupRouter(cfg, log, healthHandler, costHandler, applicationHandler, reportsManager)
+	router := setupRouter(cfg, log, healthHandler, costHandler, applicationHandler, rdsHandler, reportsManager)
 
 	srv := &http.Server{
 		Addr:         cfg.GetBindAddress(),
@@ -108,7 +120,7 @@ func main() {
 	}
 }
 
-func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers.HealthHandler, costHandler *costs.CostHandler, applicationHandler *costs.ApplicationHandler, reportsManager *reports.Manager) *gin.Engine {
+func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers.HealthHandler, costHandler *costs.CostHandler, applicationHandler *costs.ApplicationHandler, rdsHandler *rds.RDSHandler, reportsManager *reports.Manager) *gin.Engine {
 	if cfg.Server.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -158,6 +170,17 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 		// Legacy cost endpoint
 		api.GET("/costs", costHandler.GetCostSummary)
 		
+		// RDS endpoints
+		rds := api.Group("/rds")
+		{
+			rds.GET("/health", rdsHandler.GetHealth)
+			rds.GET("/summary", rdsHandler.GetSummary)
+			rds.GET("/instances", rdsHandler.GetInstances)
+			rds.GET("/instances/:id", rdsHandler.GetInstance)
+			rds.GET("/versions", rdsHandler.GetVersions)
+			rds.GET("/outdated", rdsHandler.GetOutdated)
+		}
+		
 		// Reports endpoints
 		reports := api.Group("/reports")
 		{
@@ -174,6 +197,8 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 	// Web pages
 	router.GET("/", applicationHandler.GetApplicationsPage)
 	router.GET("/applications/:name", applicationHandler.GetApplicationPage)
+	router.GET("/rds", rdsHandler.GetInstancesPage)
+	router.GET("/rds/:id", rdsHandler.GetInstancePage)
 
 	return router
 }
