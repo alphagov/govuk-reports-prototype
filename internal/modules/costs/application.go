@@ -108,7 +108,7 @@ func (s *ApplicationService) GetApplicationByName(ctx context.Context, name stri
 
 	// Calculate cost with metadata
 	costResult := s.calculateApplicationCost(*app, costData)
-	
+
 	// Generate service breakdown
 	services := s.generateServiceBreakdown(*app, costData, costResult)
 
@@ -156,7 +156,7 @@ func (s *ApplicationService) GetApplicationServices(ctx context.Context, name st
 
 	// Calculate cost with metadata
 	costResult := s.calculateApplicationCost(*app, costData)
-	
+
 	services := s.generateServiceBreakdown(*app, costData, costResult)
 	return services, nil
 }
@@ -167,24 +167,24 @@ func (s *ApplicationService) GetApplicationServices(ctx context.Context, name st
 func (s *ApplicationService) tryGetRealTagBasedCost(app govuk.Application) (float64, string) {
 	// Map GOV.UK app name to system tag format
 	systemTagName := s.mapAppNameToSystemTag(app)
-	
+
 	s.logger.WithFields(map[string]interface{}{
-		"app":             app.AppName,
-		"shortname":       app.Shortname,
-		"mapped_tag":      systemTagName,
+		"app":        app.AppName,
+		"shortname":  app.Shortname,
+		"mapped_tag": systemTagName,
 	}).Debug().Msg("Attempting to get real tag-based cost")
-	
+
 	// Try to get cost data for this specific application tag
 	tagCostData, err := s.awsClient.GetCostDataForApplication(systemTagName)
 	if err != nil {
 		s.logger.WithFields(map[string]interface{}{
-			"app":       app.AppName,
-			"tag":       systemTagName,
-			"error":     err.Error(),
+			"app":   app.AppName,
+			"tag":   systemTagName,
+			"error": err.Error(),
 		}).Debug().Msg("Failed to get tag-based cost data")
 		return 0, "none"
 	}
-	
+
 	if len(tagCostData) == 0 {
 		s.logger.WithFields(map[string]interface{}{
 			"app": app.AppName,
@@ -192,78 +192,88 @@ func (s *ApplicationService) tryGetRealTagBasedCost(app govuk.Application) (floa
 		}).Debug().Msg("No cost data found for application tag")
 		return 0, "none"
 	}
-	
+
 	// Sum up all costs for this application
 	totalCost := 0.0
 	for _, costItem := range tagCostData {
 		totalCost += costItem.Amount
 	}
-	
+
 	// Determine confidence based on data quality
 	confidence := s.determineCostConfidence(tagCostData, app)
-	
+
 	s.logger.WithFields(map[string]interface{}{
-		"app":             app.AppName,
-		"tag":             systemTagName,
-		"total_cost":      totalCost,
-		"cost_items":      len(tagCostData),
-		"confidence":      confidence,
+		"app":        app.AppName,
+		"tag":        systemTagName,
+		"total_cost": totalCost,
+		"cost_items": len(tagCostData),
+		"confidence": confidence,
 	}).Debug().Msg("Successfully retrieved tag-based cost data")
-	
+
 	return totalCost, confidence
 }
 
 // mapAppNameToSystemTag maps GOV.UK application names to system tag values
+// Returns system tag values in the format: govuk-{system-name}
 func (s *ApplicationService) mapAppNameToSystemTag(app govuk.Application) string {
-	// Try multiple mapping strategies to find the best match
-	
-	// Primary strategy: use shortname if available (most reliable)
+	// Primary strategy: use shortname if available and properly formatted (most reliable)
 	if app.Shortname != "" {
-		return app.Shortname
+		// If shortname already starts with 'govuk-', use it as-is
+		if strings.HasPrefix(app.Shortname, "govuk-") {
+			return app.Shortname
+		}
+		// Otherwise, prepend 'govuk-' prefix
+		return "govuk-" + app.Shortname
 	}
-	
+
 	// Secondary strategy: convert AppName to lowercase with hyphens
 	appName := strings.ToLower(app.AppName)
 	appName = strings.ReplaceAll(appName, " ", "-")
 	appName = strings.ReplaceAll(appName, "_", "-")
-	
-	// Common transformations for GOV.UK app names
+
+	// Specific mappings for common GOV.UK applications to their system tag values
+	// These mappings handle cases where the app name doesn't directly translate to the system tag
 	mappings := map[string]string{
-		"publishing-api":           "publishing-api",
-		"content-store":           "content-store", 
-		"frontend":                "frontend",
-		"government-frontend":     "government-frontend",
-		"collections":             "collections",
-		"finder-frontend":         "finder-frontend",
-		"whitehall":              "whitehall",
-		"specialist-publisher":    "specialist-publisher",
-		"manuals-publisher":       "manuals-publisher",
-		"travel-advice-publisher": "travel-advice-publisher",
-		"publisher":               "publisher",
-		"short-url-manager":       "short-url-manager",
-		"signon":                  "signon",
-		"router":                  "router",
-		"router-api":              "router-api",
-		"content-data-api":        "content-data-api",
-		"content-data-admin":      "content-data-admin",
-		"search-api":              "search-api",
-		"search-admin":            "search-admin",
-		"email-alert-api":         "email-alert-api",
-		"email-alert-frontend":    "email-alert-frontend",
-		"static":                  "static",
-		"smart-answers":           "smart-answers",
-		"calculators":             "calculators",
-		"service-manual-frontend": "service-manual-frontend",
-		"service-manual-publisher": "service-manual-publisher",
+		"publishing-api":           "govuk-publishing-api",
+		"content-store":            "govuk-content-store",
+		"frontend":                 "govuk-frontend",
+		"government-frontend":      "govuk-government-frontend",
+		"collections":              "govuk-collections",
+		"finder-frontend":          "govuk-finder-frontend",
+		"whitehall":                "govuk-whitehall",
+		"specialist-publisher":     "govuk-specialist-publisher",
+		"manuals-publisher":        "govuk-manuals-publisher",
+		"travel-advice-publisher":  "govuk-travel-advice-publisher",
+		"publisher":                "govuk-publisher",
+		"short-url-manager":        "govuk-short-url-manager",
+		"signon":                   "govuk-signon",
+		"router":                   "govuk-router",
+		"router-api":               "govuk-router-api",
+		"content-data-api":         "govuk-content-data-api",
+		"content-data-admin":       "govuk-content-data-admin",
+		"search-api":               "govuk-search-api",
+		"search-admin":             "govuk-search-admin",
+		"email-alert-api":          "govuk-email-alert-api",
+		"email-alert-frontend":     "govuk-email-alert-frontend",
+		"static":                   "govuk-static",
+		"smart-answers":            "govuk-smart-answers",
+		"calculators":              "govuk-calculators",
+		"service-manual-frontend":  "govuk-service-manual-frontend",
+		"service-manual-publisher": "govuk-service-manual-publisher",
+		"chat":                     "govuk-chat",
+		"docs":                     "govuk-docs",
+		"prototype-kit":            "govuk-prototype-kit",
+		"design-system":            "govuk-design-system",
 	}
-	
-	// Check if we have a specific mapping
+
+	// Check if we have a specific mapping for this application
 	if mapped, exists := mappings[appName]; exists {
 		return mapped
 	}
-	
-	// Default: return the transformed app name
-	return appName
+
+	// Default: return the transformed app name with govuk- prefix
+	// This ensures all returned values start with 'govuk-' as required
+	return "govuk-" + appName
 }
 
 // determineCostConfidence assesses the reliability of cost data
@@ -271,12 +281,12 @@ func (s *ApplicationService) determineCostConfidence(costData []CostData, app go
 	if len(costData) == 0 {
 		return "none"
 	}
-	
+
 	// Check data recency
 	now := time.Now()
 	hasRecentData := false
 	totalCost := 0.0
-	
+
 	for _, item := range costData {
 		totalCost += item.Amount
 		// Data from within the last 2 months is considered recent
@@ -284,32 +294,32 @@ func (s *ApplicationService) determineCostConfidence(costData []CostData, app go
 			hasRecentData = true
 		}
 	}
-	
+
 	// Determine confidence based on multiple factors
 	if !hasRecentData {
 		return "low" // Old data
 	}
-	
+
 	if totalCost == 0 {
 		return "low" // No actual costs
 	}
-	
+
 	if len(costData) >= 3 && totalCost > 10 { // Multiple cost entries with reasonable total
 		return "high"
 	}
-	
+
 	if len(costData) >= 1 && totalCost > 1 { // At least some cost data
-		return "medium"  
+		return "medium"
 	}
-	
+
 	return "low"
 }
 
 // CostCalculationResult holds both cost and metadata about how it was calculated
 type CostCalculationResult struct {
 	Cost       float64
-	Source     string  // "real_aws_tags", "service_name_match", "estimation"
-	Confidence string  // "high", "medium", "low", "none"
+	Source     string // "real_aws_tags", "service_name_match", "estimation"
+	Confidence string // "high", "medium", "low", "none"
 }
 
 func (s *ApplicationService) calculateApplicationCost(app govuk.Application, costData []CostData) CostCalculationResult {
@@ -351,7 +361,7 @@ func (s *ApplicationService) calculateApplicationCost(app govuk.Application, cos
 		"confidence": "low",
 		"source":     "estimation",
 	}).Info().Msg("Using estimated cost data")
-	
+
 	return CostCalculationResult{
 		Cost:       estimatedCost,
 		Source:     "estimation",
@@ -363,22 +373,22 @@ func (s *ApplicationService) calculateApplicationCost(app govuk.Application, cos
 func (s *ApplicationService) findExactCostMatch(app govuk.Application, costData []CostData) float64 {
 	// Try different naming convention matches
 	possibleMatches := []string{
-		app.AppName,                                    // Direct name match
-		app.Shortname,                                  // Short name match
-		strings.ReplaceAll(app.AppName, "-", "_"),      // Underscore version
-		strings.ReplaceAll(app.AppName, "_", "-"),      // Hyphen version
-		"govuk-" + app.AppName,                         // Prefixed version
-		app.AppName + "-production",                    // Environment suffix
-		app.AppName + "-prod",                          // Short env suffix
-		strings.ToLower(app.Team) + "-" + app.AppName,  // Team prefix
+		app.AppName,   // Direct name match
+		app.Shortname, // Short name match
+		strings.ReplaceAll(app.AppName, "-", "_"),     // Underscore version
+		strings.ReplaceAll(app.AppName, "_", "-"),     // Hyphen version
+		"govuk-" + app.AppName,                        // Prefixed version
+		app.AppName + "-production",                   // Environment suffix
+		app.AppName + "-prod",                         // Short env suffix
+		strings.ToLower(app.Team) + "-" + app.AppName, // Team prefix
 	}
 
 	for _, costItem := range costData {
 		serviceName := strings.ToLower(costItem.Service)
-		
+
 		for _, match := range possibleMatches {
 			if strings.Contains(serviceName, strings.ToLower(match)) ||
-			   strings.Contains(strings.ToLower(match), serviceName) {
+				strings.Contains(strings.ToLower(match), serviceName) {
 				s.logger.WithFields(map[string]interface{}{
 					"app":     app.AppName,
 					"service": costItem.Service,
@@ -397,40 +407,40 @@ func (s *ApplicationService) findExactCostMatch(app govuk.Application, costData 
 func (s *ApplicationService) estimateApplicationCost(app govuk.Application, costData []CostData) float64 {
 	// Base cost calculation using multiple factors
 	baseCost := s.calculateBaseCost(app)
-	
+
 	// Apply team-based scaling
 	teamMultiplier := s.getTeamCostMultiplier(app.Team)
-	
+
 	// Apply hosting platform multiplier
 	platformMultiplier := s.getHostingPlatformMultiplier(app.ProductionHostedOn)
-	
+
 	// Apply application complexity multiplier
 	complexityMultiplier := s.getComplexityMultiplier(app)
-	
+
 	// Calculate final cost
 	finalCost := baseCost * teamMultiplier * platformMultiplier * complexityMultiplier
-	
+
 	// Add deterministic variation based on app name (for consistency)
 	hashMultiplier := s.getConsistentHashMultiplier(app.AppName)
 	finalCost *= hashMultiplier
-	
+
 	s.logger.WithFields(map[string]interface{}{
-		"app":                  app.AppName,
-		"base_cost":           baseCost,
-		"team_multiplier":     teamMultiplier,
-		"platform_multiplier": platformMultiplier,
+		"app":                   app.AppName,
+		"base_cost":             baseCost,
+		"team_multiplier":       teamMultiplier,
+		"platform_multiplier":   platformMultiplier,
 		"complexity_multiplier": complexityMultiplier,
-		"hash_multiplier":     hashMultiplier,
-		"final_cost":          finalCost,
+		"hash_multiplier":       hashMultiplier,
+		"final_cost":            finalCost,
 	}).Debug().Msg("Calculated estimated cost")
-	
+
 	return finalCost
 }
 
 // calculateBaseCost determines base cost based on application characteristics
 func (s *ApplicationService) calculateBaseCost(app govuk.Application) float64 {
 	baseCost := 150.0 // Starting base cost in GBP
-	
+
 	// Adjust based on application type (inferred from name patterns)
 	if strings.Contains(strings.ToLower(app.AppName), "api") {
 		baseCost *= 1.3 // APIs typically consume more resources
@@ -447,28 +457,28 @@ func (s *ApplicationService) calculateBaseCost(app govuk.Application) float64 {
 	if strings.Contains(strings.ToLower(app.AppName), "search") {
 		baseCost *= 1.5 // Search systems are resource intensive
 	}
-	
+
 	return baseCost
 }
 
 // getTeamCostMultiplier returns cost multiplier based on team size and activity
 func (s *ApplicationService) getTeamCostMultiplier(team string) float64 {
 	teamMultipliers := map[string]float64{
-		"GOV.UK Platform":    1.4, // Platform team manages high-traffic infrastructure
-		"Publishing Platform": 1.3, // Core publishing infrastructure
-		"Data Products":      1.2, // Data processing workloads
-		"Content":           1.0, // Standard content applications
-		"Design System":     0.8, // Lower traffic design tools
-		"Developer docs":    0.7, // Documentation sites
-		"Performance":       1.1, // Monitoring and analytics
-		"Cyber Security":    1.0, // Security tooling
+		"GOV.UK Platform":      1.4, // Platform team manages high-traffic infrastructure
+		"Publishing Platform":  1.3, // Core publishing infrastructure
+		"Data Products":        1.2, // Data processing workloads
+		"Content":              1.0, // Standard content applications
+		"Design System":        0.8, // Lower traffic design tools
+		"Developer docs":       0.7, // Documentation sites
+		"Performance":          1.1, // Monitoring and analytics
+		"Cyber Security":       1.0, // Security tooling
 		"Specialist Publisher": 0.9, // Specialized publishing tools
 	}
-	
+
 	if multiplier, exists := teamMultipliers[team]; exists {
 		return multiplier
 	}
-	
+
 	// Default multiplier for unknown teams
 	return 1.0
 }
@@ -498,37 +508,37 @@ func (s *ApplicationService) getHostingPlatformMultiplier(platform string) float
 // getComplexityMultiplier estimates complexity based on application characteristics
 func (s *ApplicationService) getComplexityMultiplier(app govuk.Application) float64 {
 	complexity := 1.0
-	
+
 	appNameLower := strings.ToLower(app.AppName)
-	
+
 	// Database-heavy applications
-	if strings.Contains(appNameLower, "db") || 
-	   strings.Contains(appNameLower, "database") ||
-	   strings.Contains(appNameLower, "store") {
+	if strings.Contains(appNameLower, "db") ||
+		strings.Contains(appNameLower, "database") ||
+		strings.Contains(appNameLower, "store") {
 		complexity *= 1.3
 	}
-	
+
 	// Workflow/orchestration applications
 	if strings.Contains(appNameLower, "workflow") ||
-	   strings.Contains(appNameLower, "router") ||
-	   strings.Contains(appNameLower, "gateway") {
+		strings.Contains(appNameLower, "router") ||
+		strings.Contains(appNameLower, "gateway") {
 		complexity *= 1.4
 	}
-	
+
 	// Simple static sites or documentation
 	if strings.Contains(appNameLower, "static") ||
-	   strings.Contains(appNameLower, "docs") ||
-	   strings.Contains(appNameLower, "guide") {
+		strings.Contains(appNameLower, "docs") ||
+		strings.Contains(appNameLower, "guide") {
 		complexity *= 0.6
 	}
-	
+
 	// High-traffic public-facing applications
 	if strings.Contains(appNameLower, "www") ||
-	   strings.Contains(appNameLower, "frontend") ||
-	   strings.Contains(appNameLower, "gov.uk") {
+		strings.Contains(appNameLower, "frontend") ||
+		strings.Contains(appNameLower, "gov.uk") {
 		complexity *= 1.2
 	}
-	
+
 	return complexity
 }
 
@@ -539,7 +549,7 @@ func (s *ApplicationService) getConsistentHashMultiplier(appName string) float64
 	for _, char := range appName {
 		hash = hash*31 + int(char)
 	}
-	
+
 	// Convert to a multiplier between 0.7 and 1.3
 	normalizedHash := float64(hash%100) / 100.0
 	return 0.7 + normalizedHash*0.6
@@ -576,12 +586,12 @@ func (s *ApplicationService) generateServiceBreakdown(app govuk.Application, cos
 
 	// Generate realistic service distribution
 	serviceCount := s.estimateServiceCount(app)
-	
+
 	// Ensure we don't exceed available service names
 	if serviceCount > len(serviceNames) {
 		serviceCount = len(serviceNames)
 	}
-	
+
 	usedServices := serviceNames[:serviceCount]
 
 	for i, serviceName := range usedServices {
