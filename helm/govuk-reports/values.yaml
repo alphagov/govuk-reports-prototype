@@ -1,0 +1,167 @@
+# Default values for govuk-reports
+# This is a YAML-formatted file.
+# Declare variables to be substituted into your templates.
+
+replicaCount: 2
+
+image:
+  repository: govuk-reports
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: govuk-reports.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: govuk-reports-tls
+  #    hosts:
+  #      - govuk-reports.local
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Application configuration
+config:
+  # Server configuration
+  server:
+    environment: production
+    port: 8080
+    host: "0.0.0.0"
+    readTimeout: 30
+    writeTimeout: 30
+    idleTimeout: 60
+
+  # Logging configuration
+  log:
+    level: info
+    format: json
+    output: stdout
+    timeFormat: "2006-01-02T15:04:05Z07:00"
+    colorize: false
+
+  # Monitoring configuration
+  monitoring:
+    metricsEnabled: true
+
+# AWS Configuration (via environment variables/secrets)
+aws:
+  # Set to true if running in AWS with IAM roles
+  useIAMRole: true
+  # AWS region
+  region: "eu-west-1"
+  # Optional: specify credentials via secret
+  credentialsSecret: ""
+
+# Health check configuration
+healthCheck:
+  enabled: true
+  path: /api/v1/health
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+# Liveness probe configuration
+livenessProbe:
+  enabled: true
+  path: /api/v1/health
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  enabled: true
+  path: /api/v1/health
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+# Environment variables
+env: []
+  # - name: CUSTOM_ENV_VAR
+  #   value: "custom-value"
+
+# Environment variables from secrets
+envFrom: []
+  # - secretRef:
+  #     name: govuk-reports-secrets
+
+# Additional volumes
+volumes: []
+
+# Additional volume mounts
+volumeMounts: []
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
