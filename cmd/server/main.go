@@ -315,6 +315,13 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 		router.GET("/applications/:name", getServiceUnavailablePageHandler("Applications service unavailable", log))
 	}
 
+	// ElastiCache pages (only register if handlers are available
+	if elastiCacheHandler != nil {
+		router.GET("/elasticache", elastiCacheHandler.GetElastiCachesPage)
+	} else {
+		router.GET("/elasticache", getServiceUnavailablePageHandler("ElastiCache service unavailable", log))
+	}
+
 	// RDS pages (only register if handlers are available)
 	if rdsHandler != nil {
 		router.GET("/rds", rdsHandler.GetInstancesPage)

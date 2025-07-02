@@ -38,3 +38,11 @@ func (h *ElastiCacheHandler) GetClusters(c *gin.Context) {
 	h.logger.WithField("cluster_count", summary.TotalClusters).Info().Msg("Successfully fetched ElastiCache clusters")
 	c.JSON(http.StatusOK, summary)
 }
+
+func (h *ElastiCacheHandler) GetElastiCachesPage(c *gin.Context) {
+	h.logger.Info().Msg("Serving ElastiCaches table page")
+
+	c.HTML(http.StatusOK, "elasticaches.html", gin.H{
+		"title": "ElastiCaches - GOV.UK Reports Dashboard",
+	})
+}

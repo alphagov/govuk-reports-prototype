@@ -49,8 +49,8 @@ type ElastiCacheServerlessCache struct {
 
 type ElastiCacheUpdateActionsSummary struct {
 	UnappliedUpdateCount               int `json:"total_unapplied_updates"`
-	TotalUnappliedImportantUpdateCount int `json:"total_uapplied_important_updates"`
-	TotalUnappliedCriticalUpdateCount  int `json:"total_uapplied_critical_updates"`
+	TotalUnappliedImportantUpdateCount int `json:"total_unapplied_important_updates"`
+	TotalUnappliedCriticalUpdateCount  int `json:"total_unapplied_critical_updates"`
 }
 
 type ElastiCacheReplicationGroupUpdateAction struct {
@@ -100,7 +100,7 @@ type CacheClustersSummary struct {
 	MemcachedNodesCount           int32                           `json:"memcached_nodes_count"`
 	AllCacheClusters              []ElastiCacheCluster            `json:"all_cache_clusters"`
 	ReplicationGroups             []ElastiCacheReplicationGroup   `json:"replication_groups"`
-	NonReplicatedCacheClusters    []ElastiCacheCluster            `json:"non_replicationed_cache_clusters"`
+	NonReplicatedCacheClusters    []ElastiCacheCluster            `json:"non_replicated_cache_clusters"`
 	ServerlessCaches              []ElastiCacheServerlessCache    `json:"serverless_caches"`
 	UnappliedUpdateActionsSummary ElastiCacheUpdateActionsSummary `json:"unapplied_update_actions_summary"`
 }
