@@ -3,6 +3,9 @@ package elasticache
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strconv"
+	"strings"
 
 	"govuk-reports-dashboard/internal/config"
 	"govuk-reports-dashboard/pkg/logger"
@@ -30,7 +33,7 @@ func NewElastiCacheService(awsConfig aws.Config, config *config.Config, logger *
 }
 
 func (s *ElastiCacheService) GetAllClusters(ctx context.Context) (*CacheClustersSummary, error) {
-	s.logger.Info().Msg("Discovering ElastiCache clusters")
+	s.logger.Info().Msg("Discovering ElastiCache instances")
 
 	cacheClusters, err := s.getCacheClusters(ctx)
 	if err != nil {
@@ -47,12 +50,16 @@ func (s *ElastiCacheService) GetAllClusters(ctx context.Context) (*CacheClusters
 		return nil, err
 	}
 
-	summary := s.generateCacheClustersSummary(replicationGroups, cacheClusters, serverlessCaches)
+	summary, err := s.generateCacheClustersSummary(&replicationGroups, &cacheClusters, &serverlessCaches, ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	return summary, nil
 }
 
 func (s *ElastiCacheService) getCacheClusters(ctx context.Context) ([]ElastiCacheCluster, error) {
+	s.logger.Info().Msg("Discovering ElastiCache Cache Clusters")
 	var cacheClusters []ElastiCacheCluster
 
 	paginator := elasticache.NewDescribeCacheClustersPaginator(s.client, &elasticache.DescribeCacheClustersInput{})
@@ -73,7 +80,85 @@ func (s *ElastiCacheService) getCacheClusters(ctx context.Context) ([]ElastiCach
 	return cacheClusters, nil
 }
 
+func (s *ElastiCacheService) getUpdateActionsSummaryAndPopulateUpdates(replicationGroups *[]ElastiCacheReplicationGroup, cacheClusters *[]ElastiCacheCluster, ctx context.Context) (*ElastiCacheUpdateActionsSummary, error) {
+	s.logger.Info().Msg("Discovering ElastiCache Unapplied Update Actions")
+
+	var unappliedUpdateCount, unappliedImportantUpdateCount, unappliedCriticalUpdateCount int = 0, 0, 0
+
+	replicationGroupUpdateActions, err := s.getReplicationGroupUpdateActions(*replicationGroups, ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, replicationGroupUpdateAction := range replicationGroupUpdateActions {
+		if replicationGroupUpdateAction.UpdateAction.ServiceUpdate.Status != "available" {
+			continue
+		}
+
+		if replicationGroupUpdateAction.UpdateAction.Status == "not-applicable" || replicationGroupUpdateAction.UpdateAction.Status == "complete" {
+			continue
+		}
+
+		replicationGroupIndex := slices.IndexFunc(*replicationGroups, func(replicationGroup ElastiCacheReplicationGroup) bool {
+			return replicationGroupUpdateAction.ReplicationGroupId == replicationGroup.Id
+		})
+		replicationGroup := &(*replicationGroups)[replicationGroupIndex]
+		replicationGroup.UnappliedUpdateActions = append(replicationGroup.UnappliedUpdateActions, replicationGroupUpdateAction)
+
+		unappliedUpdateCount += 1
+		replicationGroup.UnappliedUpdateActionsSummary.UnappliedUpdateCount += 1
+		switch replicationGroupUpdateAction.UpdateAction.ServiceUpdate.Severity {
+		case "critical":
+			unappliedCriticalUpdateCount += 1
+			replicationGroup.UnappliedUpdateActionsSummary.TotalUnappliedCriticalUpdateCount += 1
+		case "important":
+			unappliedImportantUpdateCount += 1
+			replicationGroup.UnappliedUpdateActionsSummary.TotalUnappliedImportantUpdateCount += 1
+		}
+	}
+
+	cacheClusterUpdateActions, err := s.getCacheClusterUpdateActions(*cacheClusters, ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cacheClusterUpdateAction := range cacheClusterUpdateActions {
+		if cacheClusterUpdateAction.UpdateAction.ServiceUpdate.Status != "available" {
+			continue
+		}
+
+		if !slices.Contains([]string{"available", "not-applicable"}, cacheClusterUpdateAction.UpdateAction.Status) {
+			continue
+		}
+
+		cacheClusterIndex := slices.IndexFunc(*cacheClusters, func(cacheCluster ElastiCacheCluster) bool {
+			return cacheClusterUpdateAction.CacheClusterId == cacheCluster.Id
+		})
+		cacheCluster := &(*cacheClusters)[cacheClusterIndex]
+		cacheCluster.UnappliedUpdateActions = append(cacheCluster.UnappliedUpdateActions, cacheClusterUpdateAction)
+
+		unappliedUpdateCount += 1
+		cacheCluster.UnappliedUpdateActionsSummary.UnappliedUpdateCount += 1
+		switch cacheClusterUpdateAction.UpdateAction.ServiceUpdate.Severity {
+		case "critical":
+			unappliedCriticalUpdateCount += 1
+			cacheCluster.UnappliedUpdateActionsSummary.TotalUnappliedCriticalUpdateCount += 1
+		case "important":
+			unappliedImportantUpdateCount += 1
+			cacheCluster.UnappliedUpdateActionsSummary.TotalUnappliedImportantUpdateCount += 1
+		}
+	}
+
+	return &ElastiCacheUpdateActionsSummary{
+		TotalUnappliedCriticalUpdateCount:  unappliedCriticalUpdateCount,
+		TotalUnappliedImportantUpdateCount: unappliedImportantUpdateCount,
+		UnappliedUpdateCount:               unappliedUpdateCount,
+	}, nil
+}
+
 func (s *ElastiCacheService) getReplicationGroups(cacheClusters []ElastiCacheCluster, ctx context.Context) ([]ElastiCacheReplicationGroup, error) {
+	s.logger.Info().Msg("Discovering ElastiCache Replication Groups")
+
 	var replicationGroups []ElastiCacheReplicationGroup
 
 	paginator := elasticache.NewDescribeReplicationGroupsPaginator(s.client, &elasticache.DescribeReplicationGroupsInput{})
@@ -91,6 +176,70 @@ func (s *ElastiCacheService) getReplicationGroups(cacheClusters []ElastiCacheClu
 	}
 
 	return replicationGroups, nil
+}
+
+func (s *ElastiCacheService) getReplicationGroupUpdateActions(replicationGroups []ElastiCacheReplicationGroup, ctx context.Context) ([]ElastiCacheReplicationGroupUpdateAction, error) {
+	var replicationGroupIds []string = make([]string, len(replicationGroups))
+	for i, replicationGroup := range replicationGroups {
+		replicationGroupIds[i] = replicationGroup.Id
+	}
+
+	var replicationGroupUpdateActions []ElastiCacheReplicationGroupUpdateAction
+
+	paginator := elasticache.NewDescribeUpdateActionsPaginator(s.client, &elasticache.DescribeUpdateActionsInput{
+		ReplicationGroupIds: replicationGroupIds,
+	})
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			s.logger.WithError(err).Error().Msg("Failed to describe update actions for replication groups")
+			return nil, fmt.Errorf("failed to describe update actions for replication groups: %w", err)
+		}
+
+		for _, updateAction := range page.UpdateActions {
+			replicationGroupUpdateAction, err := s.convertToReplicationGroupUpdateAction(updateAction)
+			if err != nil {
+				return nil, err
+			}
+
+			replicationGroupUpdateActions = append(replicationGroupUpdateActions, *replicationGroupUpdateAction)
+		}
+	}
+
+	return replicationGroupUpdateActions, nil
+}
+
+func (s *ElastiCacheService) getCacheClusterUpdateActions(cacheClusters []ElastiCacheCluster, ctx context.Context) ([]ElastiCacheCacheClusterUpdateAction, error) {
+	var cacheClusterIds []string = make([]string, len(cacheClusters))
+	for i, cacheCluster := range cacheClusters {
+		cacheClusterIds[i] = cacheCluster.Id
+	}
+
+	var cacheClusterUpdateActions []ElastiCacheCacheClusterUpdateAction
+
+	paginator := elasticache.NewDescribeUpdateActionsPaginator(s.client, &elasticache.DescribeUpdateActionsInput{
+		CacheClusterIds: cacheClusterIds,
+	})
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			s.logger.WithError(err).Error().Msg("Failed to describe update actions for cache clusters")
+			return nil, fmt.Errorf("failed to describe update actions for cache clusters: %w", err)
+		}
+
+		for _, updateAction := range page.UpdateActions {
+			cacheClusterUpdateAction, err := s.convertToCacheClusterUpdateAction(updateAction)
+			if err != nil {
+				return nil, err
+			}
+
+			cacheClusterUpdateActions = append(cacheClusterUpdateActions, *cacheClusterUpdateAction)
+		}
+	}
+
+	return cacheClusterUpdateActions, nil
 }
 
 func (s *ElastiCacheService) getServerlessCaches(ctx context.Context) ([]ElastiCacheServerlessCache, error) {
@@ -126,7 +275,9 @@ func (s *ElastiCacheService) convertToElastiCacheCluster(cacheCluster types.Cach
 			AtRest:    aws.ToBool(cacheCluster.AtRestEncryptionEnabled),
 			InTransit: aws.ToBool(cacheCluster.TransitEncryptionEnabled),
 		},
-		ReplicationGroup: aws.ToString(cacheCluster.ReplicationGroupId),
+		ReplicationGroup:              aws.ToString(cacheCluster.ReplicationGroupId),
+		UnappliedUpdateActionsSummary: ElastiCacheUpdateActionsSummary{},
+		UnappliedUpdateActions:        []ElastiCacheCacheClusterUpdateAction{},
 	}
 }
 
@@ -166,14 +317,83 @@ func (s *ElastiCacheService) convertToElastiCacheReplicationGroup(replicationGro
 			AtRest:    aws.ToBool(replicationGroup.AtRestEncryptionEnabled),
 			InTransit: aws.ToBool(replicationGroup.TransitEncryptionEnabled),
 		},
+		UnappliedUpdateActionsSummary: ElastiCacheUpdateActionsSummary{},
+		UnappliedUpdateActions:        []ElastiCacheReplicationGroupUpdateAction{},
 	}
 }
 
-func (s *ElastiCacheService) generateCacheClustersSummary(replicationGroups []ElastiCacheReplicationGroup, cacheClusters []ElastiCacheCluster, serverlessCaches []ElastiCacheServerlessCache) *CacheClustersSummary {
+func (s *ElastiCacheService) convertToReplicationGroupUpdateAction(updateAction types.UpdateAction) (*ElastiCacheReplicationGroupUpdateAction, error) {
+	if updateAction.ReplicationGroupId == nil {
+		return nil, fmt.Errorf("Replication Group Update Action missing ReplicationGroupId field")
+	}
+
+	elastiCacheUpdateAction, err := s.convertToElastiCacheUpdateAction(updateAction)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ElastiCacheReplicationGroupUpdateAction{
+		ReplicationGroupId: aws.ToString(updateAction.ReplicationGroupId),
+		UpdateAction:       *elastiCacheUpdateAction,
+	}, nil
+}
+
+func (s *ElastiCacheService) convertToCacheClusterUpdateAction(updateAction types.UpdateAction) (*ElastiCacheCacheClusterUpdateAction, error) {
+	if updateAction.CacheClusterId == nil {
+		return nil, fmt.Errorf("Cache Cluster Update Action missing CacheClusterId field")
+	}
+
+	elastiCacheUpdateAction, err := s.convertToElastiCacheUpdateAction(updateAction)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ElastiCacheCacheClusterUpdateAction{
+		CacheClusterId: aws.ToString(updateAction.CacheClusterId),
+		UpdateAction:   *elastiCacheUpdateAction,
+	}, nil
+}
+
+func (s *ElastiCacheService) convertToElastiCacheUpdateAction(updateAction types.UpdateAction) (*ElastiCacheUpdateAction, error) {
+	nodeCompletion := strings.Split(aws.ToString(updateAction.NodesUpdated), "/")
+	nodesUpdated, err := strconv.Atoi(nodeCompletion[0])
+	if err != nil {
+		s.logger.WithError(err).Error().Msg("Couldn't parse nodes completed from NodesUpdated in ElastiCache update action")
+		return nil, fmt.Errorf("Couldn't parse nodes completed NodesUpdated in ElastiCache update action %w", err)
+	}
+	totalNodesToUpdate, err := strconv.Atoi(nodeCompletion[1])
+	if err != nil {
+		s.logger.WithError(err).Error().Msg("Couldn't parse total nodes to update from NodesUpdated in ElastiCache update action")
+		return nil, fmt.Errorf("Couldn't parse total nodes to update from NodesUpdated in ElastiCache update action %w", err)
+	}
+
+	return &ElastiCacheUpdateAction{
+		ServiceUpdate: ElastiCacheServiceUpdate{
+			Name:                   aws.ToString(updateAction.ServiceUpdateName),
+			ReleaseDate:            aws.ToTime(updateAction.ServiceUpdateReleaseDate),
+			Severity:               aws.ToString((*string)(&updateAction.ServiceUpdateSeverity)),
+			Status:                 aws.ToString((*string)(&updateAction.ServiceUpdateStatus)),
+			RecommendedApplyByDate: aws.ToTime(updateAction.ServiceUpdateRecommendedApplyByDate),
+			Type:                   aws.ToString((*string)(&updateAction.ServiceUpdateType)),
+		},
+		AvailableDate:      aws.ToTime(updateAction.UpdateActionAvailableDate),
+		Status:             aws.ToString((*string)(&updateAction.UpdateActionStatus)),
+		StatusModifiedDate: aws.ToTime(updateAction.UpdateActionStatusModifiedDate),
+		Completion: ElastiCacheUpdateActionCompletionStatus{
+			TotalNodesToUpdate:          totalNodesToUpdate,
+			TotalNodesAlreadyUpdated:    nodesUpdated,
+			TotalNodesRemainingToUpdate: totalNodesToUpdate - nodesUpdated,
+		},
+		SlaMet: aws.ToString((*string)(&updateAction.SlaMet)),
+		Engine: aws.ToString(updateAction.Engine),
+	}, nil
+}
+
+func (s *ElastiCacheService) generateCacheClustersSummary(replicationGroups *[]ElastiCacheReplicationGroup, cacheClusters *[]ElastiCacheCluster, serverlessCaches *[]ElastiCacheServerlessCache, ctx context.Context) (*CacheClustersSummary, error) {
 	var valkeyCount, redisCount, memcachedCount int = 0, 0, 0
 	var totalNodes, valkeyNodeCount, redisNodeCount, memcachedNodeCount int32 = 0, 0, 0, 0
 
-	for _, cluster := range cacheClusters {
+	for _, cluster := range *cacheClusters {
 		switch cluster.Engine {
 		case "memcached":
 			memcachedCount += 1
@@ -188,7 +408,7 @@ func (s *ElastiCacheService) generateCacheClustersSummary(replicationGroups []El
 		totalNodes = totalNodes + cluster.NumCacheNodes
 	}
 
-	for _, serverlessCache := range serverlessCaches {
+	for _, serverlessCache := range *serverlessCaches {
 		switch serverlessCache.Engine {
 		case "memcached":
 			memcachedCount += 1
@@ -200,25 +420,31 @@ func (s *ElastiCacheService) generateCacheClustersSummary(replicationGroups []El
 	}
 
 	var nonReplicatedCacheClusters []ElastiCacheCluster
-	for _, cacheCluster := range cacheClusters {
+	for _, cacheCluster := range *cacheClusters {
 		if cacheCluster.ReplicationGroup == "" {
 			nonReplicatedCacheClusters = append(nonReplicatedCacheClusters, cacheCluster)
 		}
 	}
 
-	return &CacheClustersSummary{
-		TotalClusters:              len(cacheClusters),
-		TotalServerlessCaches:      len(serverlessCaches),
-		TotalNodes:                 totalNodes,
-		MemcachedCount:             memcachedCount,
-		MemcachedNodesCount:        memcachedNodeCount,
-		RedisCount:                 redisCount,
-		RedisNodesCount:            redisNodeCount,
-		ValkeyCount:                valkeyCount,
-		ValkeyNodesCount:           valkeyNodeCount,
-		AllCacheClusters:           cacheClusters,
-		ReplicationGroups:          replicationGroups,
-		NonReplicatedCacheClusters: nonReplicatedCacheClusters,
-		ServerlessCaches:           serverlessCaches,
+	updateActionsSummary, err := s.getUpdateActionsSummaryAndPopulateUpdates(replicationGroups, cacheClusters, ctx)
+	if err != nil {
+		return nil, err
 	}
+
+	return &CacheClustersSummary{
+		TotalClusters:                 len(*cacheClusters),
+		TotalServerlessCaches:         len(*serverlessCaches),
+		TotalNodes:                    totalNodes,
+		MemcachedCount:                memcachedCount,
+		MemcachedNodesCount:           memcachedNodeCount,
+		RedisCount:                    redisCount,
+		RedisNodesCount:               redisNodeCount,
+		ValkeyCount:                   valkeyCount,
+		ValkeyNodesCount:              valkeyNodeCount,
+		AllCacheClusters:              *cacheClusters,
+		ReplicationGroups:             *replicationGroups,
+		NonReplicatedCacheClusters:    nonReplicatedCacheClusters,
+		ServerlessCaches:              *serverlessCaches,
+		UnappliedUpdateActionsSummary: *updateActionsSummary,
+	}, nil
 }
