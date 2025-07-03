@@ -46,3 +46,29 @@ func (h *ElastiCacheHandler) GetElastiCachesPage(c *gin.Context) {
 		"title": "ElastiCaches - GOV.UK Reports Dashboard",
 	})
 }
+
+// GetHealth handles GET /api/elasticache/health - checks if ElastiCache service is available
+func (h *ElastiCacheHandler) GetHealth(c *gin.Context) {
+	h.logger.Info().Msg("Handling ElastiCache health check request")
+
+	// Try to list instances to verify AWS connectivity
+	_, err := h.elastiCacheService.GetServerlessCaches(c.Request.Context())
+
+	if err != nil {
+		h.logger.WithError(err).Error().Msg("ElastiCache health check failed")
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":  "unhealthy",
+			"service": "elasticache",
+			"error":   "Unable to connect to AWS ElastiCache",
+		})
+		return
+	}
+
+	h.logger.Info().Msg("ElastiCache health check passed")
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "healthy",
+		"service": "elasticache",
+		"message": "AWS ElastiCache connectivity verified",
+	})
+}
+

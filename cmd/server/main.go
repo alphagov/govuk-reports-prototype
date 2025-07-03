@@ -208,6 +208,7 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 	// - /api/applications/:name/services - Get application services
 	// - /api/costs - Legacy cost summary (backwards compatibility)
 	// - /api/costs/summary - Cost module summary
+	// - /api/elasticache/health - ElastiCache service health check
 	// - /api/elasticache/clusters - List ElastiCache clusters
 	// - /api/rds/health - RDS service health check
 	// - /api/rds/summary - RDS summary statistics
@@ -255,9 +256,11 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 		// ElastiCache endpoints (only register if handler is available)
 		elasticache := api.Group("/elasticache")
 		if elastiCacheHandler != nil {
+			elasticache.GET("/health", elastiCacheHandler.GetHealth)
 			elasticache.GET("/clusters", elastiCacheHandler.GetClusters)
 		} else {
 			// Provide service unavailaible responses when ElastiCache is not available
+			elasticache.GET("/health", getServiceUnavailableHandler("ElastiCache service unavailable", log))
 			elasticache.GET("/clusters", getServiceUnavailableHandler("ElastiCache service unavailaible", log))
 		}
 

@@ -45,7 +45,7 @@ func (s *ElastiCacheService) GetAllClusters(ctx context.Context) (*CacheClusters
 		return nil, err
 	}
 
-	serverlessCaches, err := s.getServerlessCaches(ctx)
+	serverlessCaches, err := s.GetServerlessCaches(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (s *ElastiCacheService) getCacheClusterUpdateActions(cacheClusters []Elasti
 	return cacheClusterUpdateActions, nil
 }
 
-func (s *ElastiCacheService) getServerlessCaches(ctx context.Context) ([]ElastiCacheServerlessCache, error) {
+func (s *ElastiCacheService) GetServerlessCaches(ctx context.Context) ([]ElastiCacheServerlessCache, error) {
 	var serverlessCaches []ElastiCacheServerlessCache
 
 	paginator := elasticache.NewDescribeServerlessCachesPaginator(s.client, &elasticache.DescribeServerlessCachesInput{})
