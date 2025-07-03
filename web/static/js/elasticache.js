@@ -3,9 +3,9 @@
 
 class ElastiCachesPage {
     constructor() {
-        this.instances = [];
-        this.filteredInstances = [];
-        this.currentSort = { field: 'instance_id', direction: 'asc' };
+        this.caches = [];
+        this.filteredCaches = [];
+        this.currentSort = { field: 'name', direction: 'asc' };
         this.currentFilter = 'all';
         this.currentSearch = '';
         
@@ -91,12 +91,15 @@ class ElastiCachesPage {
             // const instancesData = await instancesResponse.json();
 
             this.updateSummaryCards(summaryData);
-            // this.instances = instancesData.instances || [];
-            // this.filteredInstances = [...this.instances];
+            this.caches = summaryData.replication_groups
+              .concat(summaryData.non_replicated_cache_clusters)
+              .concat(summaryData.serverless_caches);
+            // this.caches = instancesData.instances || [];
+            this.filteredCaches = [...this.caches];
             
-            // this.renderInstances();
+            this.renderCaches();
             // this.renderVersionChart();
-            // this.showInstancesTable();
+            this.showCachesTable();
             this.hideLoading();
 
         } catch (error) {
@@ -146,6 +149,162 @@ class ElastiCachesPage {
         }
     }
 
+    renderCaches() {
+        const tbody = document.getElementById('caches-tbody');
+        
+        if (!tbody) return;
+
+        // Clear existing content
+        tbody.innerHTML = '';
+
+        if (this.filteredCaches.length === 0) {
+            //this.showNoResults();
+            return;
+        }
+
+        //this.hideNoResults();
+
+
+        // Render each instance
+        this.filteredCaches.forEach(cache => {
+            const row = this.createCacheRow(cache);
+            tbody.appendChild(row);
+        });
+
+        // Update footer stats
+        //this.updateTableFooter();
+    }
+
+    cacheType(cache) {
+        var type = 'Unknown'
+
+        if (Object.hasOwn(cache, 'replication_group_id')) {
+            type = 'Replication Group'
+        } else if (Object.hasOwn(cache, 'cache_cluster_id')) {
+            type = 'Cache Cluster'
+        } else if (Object.hasOwn(cache, 'serverless_cache_name')) {
+            type = 'Serverless'
+        }
+
+        return type
+    }
+
+    engineVersion(cache) {
+        var engineVersion = 'Unknown';
+
+        switch (this.cacheType(cache)) {
+            case 'Serverless':
+                engineVersion = cache.full_engine_version;
+                break;
+            case 'Cache Cluster':
+                engineVersion = cache.engine_version;
+                break;
+            case 'Replication Group':
+                const allEngineVersions = [
+                  ... new Set(cache.member_clusters.map((cluster) => cluster.engine_version))
+                ];
+                allEngineVersions.sort()
+                engineVersion = allEngineVersions.join(',')
+                break;
+        }
+
+        return engineVersion
+    }
+
+    createCacheRow(cache) {
+        console.log("WHAAAA")
+        console.log(cache)
+        const row = document.createElement('tr');
+        row.className = 'govuk-table__row';
+        
+        // Apply styling based on compliance status
+        /// const complianceStatus = this.getComplianceStatus(instance);
+        /// if (complianceStatus === 'eol') {
+        ///     row.classList.add('rds-row--critical');
+        /// } else if (complianceStatus === 'outdated') {
+        ///     row.classList.add('rds-row--warning');
+        /// }
+        
+        var type = this.cacheType(cache)
+
+        // Instance ID (with link to detail page)
+        const idCell = document.createElement('td');
+        idCell.className = 'govuk-table__cell';
+        // const idLink = document.createElement('a');
+        // idLink.href = `/elasticache/${encodeURIComponent(cache.instance_id)}`;
+        // idLink.className = 'govuk-link';
+        //idLink.textContent = cache.replication_group_id || cache.cache_cluster_id || cache.serverless_cache_name;
+        //idCell.appendChild(idLink);
+        idCell.textContent = cache.replication_group_id || cache.cache_cluster_id || cache.serverless_cache_name;
+        
+        // ElastiCache type
+        const typeCell = document.createElement('td');
+        typeCell.className = 'govuk-table__cell';
+        typeCell.textContent = type
+        
+        // Engine
+        const engCell = document.createElement('td');
+        engCell.className = 'govuk-table__cell';
+        const engTag = document.createElement('span');
+        engTag.textContent = cache.engine
+        engCell.appendChild(engTag);
+
+        // Version
+        const versionCell = document.createElement('td');
+        versionCell.className = 'govuk-table__cell';
+      
+
+        var engineVersion = this.engineVersion(cache)
+        versionCell.innerHTML = engineVersion
+        
+        // Critical Updates
+        const criticalCell = document.createElement('td');
+        criticalCell.className = 'govuk-table__cell';
+        if (type === "Serverless" ) {
+          criticalCell.innerHTML = "N/A";
+        } else {
+          criticalCell.innerHTML = cache.update_action_summary.total_unapplied_critical_updates
+        }
+
+        // Important Updates
+        const importantCell = document.createElement('td');
+        importantCell.className = 'govuk-table__cell';
+        if (type === "Serverless" ) {
+          importantCell.innerHTML = "N/A";
+        } else {
+          importantCell.innerHTML = cache.update_action_summary.total_unapplied_important_updates
+        }
+        
+        // Total Updates
+        const totalCell = document.createElement('td');
+        totalCell.className = 'govuk-table__cell';
+        if (type === "Serverless" ) {
+          totalCell.innerHTML = "N/A";
+        } else {
+          totalCell.innerHTML = cache.update_action_summary.total_unapplied_updates
+        }
+        
+        // Actions
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'govuk-table__cell';
+        
+        const viewButton = document.createElement('a');
+        // viewButton.href = `/rds/${encodeURIComponent(cache.instance_id)}`;
+        viewButton.className = 'govuk-button govuk-button--secondary govuk-button--small';
+        viewButton.textContent = 'View Details';
+        actionsCell.appendChild(viewButton);
+        
+        // Append all cells
+        row.appendChild(idCell);
+        row.appendChild(typeCell);
+        row.appendChild(engCell);
+        row.appendChild(versionCell);
+        row.appendChild(criticalCell);
+        row.appendChild(importantCell);
+        row.appendChild(totalCell);
+        
+        return row;
+    }
 ///    renderInstances() {
 ///        const tbody = document.getElementById('instances-tbody');
 ///        
@@ -512,27 +671,27 @@ class ElastiCachesPage {
             errorState.style.display = 'none';
         }
     }
-///
-///    showInstancesTable() {
-///        const container = document.getElementById('instances-container');
-///        if (container) {
-///            container.style.display = 'block';
-///        }
-///    }
-///
-///    showNoResults() {
-///        const noResults = document.getElementById('no-results');
-///        if (noResults) {
-///            noResults.style.display = 'block';
-///        }
-///    }
-///
-///    hideNoResults() {
-///        const noResults = document.getElementById('no-results');
-///        if (noResults) {
-///            noResults.style.display = 'none';
-///        }
-///    }
+
+    showCachesTable() {
+        const container = document.getElementById('caches-container');
+        if (container) {
+            container.style.display = 'block';
+        }
+    }
+
+//    showNoResults() {
+//        const noResults = document.getElementById('no-results');
+//        if (noResults) {
+//            noResults.style.display = 'block';
+//        }
+//    }
+//
+//    hideNoResults() {
+//        const noResults = document.getElementById('no-results');
+//        if (noResults) {
+//            noResults.style.display = 'none';
+//        }
+//    }
 }
 
 // Initialize RDS page when DOM is ready
