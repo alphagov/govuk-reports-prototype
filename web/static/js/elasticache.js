@@ -18,32 +18,6 @@ class ElastiCachesPage {
     }
 
     setupEventListeners() {
-        // // Search functionality
-        // const searchInput = document.getElementById('search-instances');
-        // if (searchInput) {
-        //     searchInput.addEventListener('input', (e) => {
-        //         this.handleSearch(e.target.value);
-        //     });
-        // }
-
-        // // Filter buttons
-        // const filterButtons = document.querySelectorAll('[data-filter]');
-        // filterButtons.forEach(button => {
-        //     button.addEventListener('click', (e) => {
-        //         e.preventDefault();
-        //         this.handleFilter(e.target.dataset.filter);
-        //         this.setActiveFilter(e.target);
-        //     });
-        // });
-
-        // // Sort functionality
-        // const sortableHeaders = document.querySelectorAll('.sortable');
-        // sortableHeaders.forEach(header => {
-        //     header.addEventListener('click', (e) => {
-        //         this.handleSort(e.currentTarget.dataset.sort);
-        //     });
-        // });
-
         // Action buttons
         const retryButton = document.getElementById('retry-button');
         if (retryButton) {
@@ -51,20 +25,6 @@ class ElastiCachesPage {
                 this.loadElastiCacheData();
             });
         }
-
-        // const refreshButton = document.getElementById('refresh-data');
-        // if (refreshButton) {
-        //     refreshButton.addEventListener('click', () => {
-        //         this.loadRDSData();
-        //     });
-        // }
-
-        // const clearFiltersButton = document.getElementById('clear-filters');
-        // if (clearFiltersButton) {
-        //     clearFiltersButton.addEventListener('click', () => {
-        //         this.clearAllFilters();
-        //     });
-        // }
     }
 
     async loadElastiCacheData() {
@@ -72,33 +32,21 @@ class ElastiCachesPage {
         this.hideError();
 
         try {
-            // Load summary and instances data in parallel
-            // const [summaryResponse, instancesResponse] = await Promise.all([
-            //     fetch('/api/rds/summary'),
-            //     fetch('/api/rds/instances')
-            // ]);
-          //
             const summaryResponse = await fetch('/api/elasticache/clusters')
 
             if (!summaryResponse.ok) {
                 throw new Error(`Failed to load summary: HTTP ${summaryResponse.status}`);
             }
-            // if (!instancesResponse.ok) {
-            //     throw new Error(`Failed to load instances: HTTP ${instancesResponse.status}`);
-            // }
 
             const summaryData = await summaryResponse.json();
-            // const instancesData = await instancesResponse.json();
 
             this.updateSummaryCards(summaryData);
             this.caches = summaryData.replication_groups
               .concat(summaryData.non_replicated_cache_clusters)
               .concat(summaryData.serverless_caches);
-            // this.caches = instancesData.instances || [];
             this.filteredCaches = [...this.caches];
             
             this.renderCaches();
-            // this.renderVersionChart();
             this.showCachesTable();
             this.hideLoading();
 
@@ -121,14 +69,6 @@ class ElastiCachesPage {
         document.getElementById('unapplied-important-updates').textContent = unappliedImportantUpdates;
         document.getElementById('unapplied-critical-updates').textContent = unappliedCriticalUpdates;
         
-        /// // Calculate and display compliance percentage
-        /// const total = data.postgresql_count || 0;
-        /// const eol = data.eol_instances || 0;
-        /// const outdated = data.outdated_instances || 0;
-        /// const compliant = total - eol - outdated;
-        /// const compliancePercentage = total > 0 ? ((compliant / total) * 100).toFixed(1) : '0';
-        /// document.getElementById('compliance-rate').textContent = `${compliancePercentage}%`;
-
         // Update card styling based on values
         this.updateCardStyling('unapplied-critical-updates', unappliedCriticalUpdates);
         this.updateCardStyling('unapplied-important-updates', unappliedImportantUpdates);
@@ -162,17 +102,14 @@ class ElastiCachesPage {
             return;
         }
 
-        //this.hideNoResults();
-
+        // Sort instances
+        this.SortInstances();
 
         // Render each instance
         this.filteredCaches.forEach(cache => {
             const row = this.createCacheRow(cache);
             tbody.appendChild(row);
         });
-
-        // Update footer stats
-        //this.updateTableFooter();
     }
 
     cacheType(cache) {
@@ -203,6 +140,8 @@ class ElastiCachesPage {
                 const allEngineVersions = [
                   ... new Set(cache.member_clusters.map((cluster) => cluster.engine_version))
                 ];
+                console.log("ALL ENGINE")
+                console.log(allEngineVersions)
                 allEngineVersions.sort()
                 engineVersion = allEngineVersions.join(',')
                 break;
@@ -217,24 +156,11 @@ class ElastiCachesPage {
         const row = document.createElement('tr');
         row.className = 'govuk-table__row';
         
-        // Apply styling based on compliance status
-        /// const complianceStatus = this.getComplianceStatus(instance);
-        /// if (complianceStatus === 'eol') {
-        ///     row.classList.add('rds-row--critical');
-        /// } else if (complianceStatus === 'outdated') {
-        ///     row.classList.add('rds-row--warning');
-        /// }
-        
         var type = this.cacheType(cache)
 
-        // Instance ID (with link to detail page)
+        // Cache name
         const idCell = document.createElement('td');
         idCell.className = 'govuk-table__cell';
-        // const idLink = document.createElement('a');
-        // idLink.href = `/elasticache/${encodeURIComponent(cache.instance_id)}`;
-        // idLink.className = 'govuk-link';
-        //idLink.textContent = cache.replication_group_id || cache.cache_cluster_id || cache.serverless_cache_name;
-        //idCell.appendChild(idLink);
         idCell.textContent = cache.replication_group_id || cache.cache_cluster_id || cache.serverless_cache_name;
         
         // ElastiCache type
@@ -252,8 +178,6 @@ class ElastiCachesPage {
         // Version
         const versionCell = document.createElement('td');
         versionCell.className = 'govuk-table__cell';
-      
-
         var engineVersion = this.engineVersion(cache)
         versionCell.innerHTML = engineVersion
         
@@ -289,7 +213,6 @@ class ElastiCachesPage {
         actionsCell.className = 'govuk-table__cell';
         
         const viewButton = document.createElement('a');
-        // viewButton.href = `/rds/${encodeURIComponent(cache.instance_id)}`;
         viewButton.className = 'govuk-button govuk-button--secondary govuk-button--small';
         viewButton.textContent = 'View Details';
         actionsCell.appendChild(viewButton);
@@ -305,339 +228,50 @@ class ElastiCachesPage {
         
         return row;
     }
-///    renderInstances() {
-///        const tbody = document.getElementById('instances-tbody');
-///        
-///        if (!tbody) return;
-///
-///        // Clear existing content
-///        tbody.innerHTML = '';
-///
-///        if (this.filteredInstances.length === 0) {
-///            this.showNoResults();
-///            return;
-///        }
-///
-///        this.hideNoResults();
-///
-///        // Sort instances
-///        this.sortInstances();
-///
-///        // Render each instance
-///        this.filteredInstances.forEach(instance => {
-///            const row = this.createInstanceRow(instance);
-///            tbody.appendChild(row);
-///        });
-///
-///        // Update footer stats
-///        this.updateTableFooter();
-///    }
-///
-///    createInstanceRow(instance) {
-///        const row = document.createElement('tr');
-///        row.className = 'govuk-table__row';
-///        
-///        // Apply styling based on compliance status
-///        const complianceStatus = this.getComplianceStatus(instance);
-///        if (complianceStatus === 'eol') {
-///            row.classList.add('rds-row--critical');
-///        } else if (complianceStatus === 'outdated') {
-///            row.classList.add('rds-row--warning');
-///        }
-///        
-///        // Instance ID (with link to detail page)
-///        const idCell = document.createElement('td');
-///        idCell.className = 'govuk-table__cell';
-///        const idLink = document.createElement('a');
-///        idLink.href = `/rds/${encodeURIComponent(instance.instance_id)}`;
-///        idLink.className = 'govuk-link';
-///        idLink.textContent = instance.instance_id;
-///        idCell.appendChild(idLink);
-///        
-///        // Application
-///        const appCell = document.createElement('td');
-///        appCell.className = 'govuk-table__cell';
-///        appCell.textContent = instance.application || 'Unknown';
-///        
-///        // Environment
-///        const envCell = document.createElement('td');
-///        envCell.className = 'govuk-table__cell';
-///        const envTag = document.createElement('span');
-///        envTag.className = `environment-tag environment-tag--${(instance.environment || 'unknown').toLowerCase()}`;
-///        envTag.textContent = instance.environment || 'Unknown';
-///        envCell.appendChild(envTag);
-///        
-///        // Version
-///        const versionCell = document.createElement('td');
-///        versionCell.className = 'govuk-table__cell';
-///        versionCell.innerHTML = `
-///            <span class="version-info">
-///                ${instance.version}
-///                <small class="version-major">(v${instance.major_version})</small>
-///            </span>
-///        `;
-///        
-///        // Compliance Status
-///        const complianceCell = document.createElement('td');
-///        complianceCell.className = 'govuk-table__cell';
-///        const complianceTag = this.createComplianceTag(instance);
-///        complianceCell.appendChild(complianceTag);
-///        
-///        // Instance Class
-///        const classCell = document.createElement('td');
-///        classCell.className = 'govuk-table__cell';
-///        classCell.textContent = instance.instance_class || 'N/A';
-///        
-///        // Region
-///        const regionCell = document.createElement('td');
-///        regionCell.className = 'govuk-table__cell';
-///        regionCell.textContent = instance.region || 'N/A';
-///        
-///        // Status
-///        const statusCell = document.createElement('td');
-///        statusCell.className = 'govuk-table__cell';
-///        const statusTag = document.createElement('span');
-///        statusTag.className = `status-tag status-tag--${instance.status.toLowerCase()}`;
-///        statusTag.textContent = instance.status;
-///        statusCell.appendChild(statusTag);
-///        
-///        // Actions
-///        const actionsCell = document.createElement('td');
-///        actionsCell.className = 'govuk-table__cell';
-///        
-///        const viewButton = document.createElement('a');
-///        viewButton.href = `/rds/${encodeURIComponent(instance.instance_id)}`;
-///        viewButton.className = 'govuk-button govuk-button--secondary govuk-button--small';
-///        viewButton.textContent = 'View Details';
-///        actionsCell.appendChild(viewButton);
-///        
-///        // Append all cells
-///        row.appendChild(idCell);
-///        row.appendChild(appCell);
-///        row.appendChild(envCell);
-///        row.appendChild(versionCell);
-///        row.appendChild(complianceCell);
-///        row.appendChild(classCell);
-///        row.appendChild(regionCell);
-///        row.appendChild(statusCell);
-///        row.appendChild(actionsCell);
-///        
-///        return row;
-///    }
-///
-///    createComplianceTag(instance) {
-///        const tag = document.createElement('span');
-///        
-///        if (instance.is_eol) {
-///            tag.className = 'compliance-tag compliance-tag--critical';
-///            tag.textContent = 'End-of-Life';
-///            tag.title = 'This version is end-of-life and should be upgraded immediately';
-///        } else {
-///            // Could add logic for outdated detection here
-///            const isOutdated = this.isInstanceOutdated(instance);
-///            if (isOutdated) {
-///                tag.className = 'compliance-tag compliance-tag--warning';
-///                tag.textContent = 'Outdated';
-///                tag.title = 'This version is outdated and should be updated';
-///            } else {
-///                tag.className = 'compliance-tag compliance-tag--success';
-///                tag.textContent = 'Compliant';
-///                tag.title = 'This version is current and compliant';
-///            }
-///        }
-///        
-///        return tag;
-///    }
-///
-///    isInstanceOutdated(instance) {
-///        // Simple heuristic: versions below 13 are considered outdated (but not EOL)
-///        const majorVersion = parseInt(instance.major_version);
-///        return !instance.is_eol && majorVersion < 13;
-///    }
-///
-///    getComplianceStatus(instance) {
-///        if (instance.is_eol) return 'eol';
-///        if (this.isInstanceOutdated(instance)) return 'outdated';
-///        return 'compliant';
-///    }
-///
-///    handleSearch(searchTerm) {
-///        this.currentSearch = searchTerm.toLowerCase().trim();
-///        this.applyFiltersAndSearch();
-///    }
-///
-///    handleFilter(filter) {
-///        this.currentFilter = filter;
-///        this.applyFiltersAndSearch();
-///    }
-///
-///    applyFiltersAndSearch() {
-///        let filtered = [...this.instances];
-///        
-///        // Apply filter
-///        if (this.currentFilter !== 'all') {
-///            filtered = filtered.filter(instance => {
-///                const status = this.getComplianceStatus(instance);
-///                return status === this.currentFilter;
-///            });
-///        }
-///        
-///        // Apply search
-///        if (this.currentSearch) {
-///            filtered = filtered.filter(instance => 
-///                instance.instance_id.toLowerCase().includes(this.currentSearch) ||
-///                (instance.application || '').toLowerCase().includes(this.currentSearch) ||
-///                (instance.environment || '').toLowerCase().includes(this.currentSearch) ||
-///                instance.version.toLowerCase().includes(this.currentSearch) ||
-///                instance.major_version.toLowerCase().includes(this.currentSearch) ||
-///                (instance.region || '').toLowerCase().includes(this.currentSearch)
-///            );
-///        }
-///        
-///        this.filteredInstances = filtered;
-///        this.renderInstances();
-///    }
-///
-///    handleSort(field) {
-///        if (this.currentSort.field === field) {
-///            // Toggle direction
-///            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
-///        } else {
-///            // New field, default to ascending
-///            this.currentSort.field = field;
-///            this.currentSort.direction = 'asc';
-///        }
-///        
-///        this.updateSortIndicators();
-///        this.renderInstances();
-///    }
-///
-///    sortInstances() {
-///        this.filteredInstances.sort((a, b) => {
-///            let aValue, bValue;
-///            
-///            switch (this.currentSort.field) {
-///                case 'instance_id':
-///                    aValue = a.instance_id.toLowerCase();
-///                    bValue = b.instance_id.toLowerCase();
-///                    break;
-///                case 'application':
-///                    aValue = (a.application || '').toLowerCase();
-///                    bValue = (b.application || '').toLowerCase();
-///                    break;
-///                case 'environment':
-///                    aValue = (a.environment || '').toLowerCase();
-///                    bValue = (b.environment || '').toLowerCase();
-///                    break;
-///                case 'version':
-///                    aValue = a.version.toLowerCase();
-///                    bValue = b.version.toLowerCase();
-///                    break;
-///                case 'instance_class':
-///                    aValue = (a.instance_class || '').toLowerCase();
-///                    bValue = (b.instance_class || '').toLowerCase();
-///                    break;
-///                case 'region':
-///                    aValue = (a.region || '').toLowerCase();
-///                    bValue = (b.region || '').toLowerCase();
-///                    break;
-///                default:
-///                    return 0;
-///            }
-///            
-///            if (aValue < bValue) return this.currentSort.direction === 'asc' ? -1 : 1;
-///            if (aValue > bValue) return this.currentSort.direction === 'asc' ? 1 : -1;
-///            return 0;
-///        });
-///    }
-///
-///    updateSortIndicators() {
-///        // Reset all sort indicators
-///        document.querySelectorAll('.sortable').forEach(header => {
-///            header.classList.remove('asc', 'desc');
-///        });
-///        
-///        // Set current sort indicator
-///        const currentHeader = document.querySelector(`[data-sort="${this.currentSort.field}"]`);
-///        if (currentHeader) {
-///            currentHeader.classList.add(this.currentSort.direction);
-///        }
-///    }
-///
-///    setActiveFilter(activeButton) {
-///        // Remove active class from all filter buttons
-///        document.querySelectorAll('[data-filter]').forEach(button => {
-///            button.classList.remove('active');
-///        });
-///        
-///        // Add active class to clicked button
-///        activeButton.classList.add('active');
-///    }
-///
-///    clearAllFilters() {
-///        this.currentFilter = 'all';
-///        this.currentSearch = '';
-///        
-///        // Reset UI elements
-///        document.getElementById('search-instances').value = '';
-///        this.setActiveFilter(document.getElementById('filter-all'));
-///        
-///        // Reapply filters
-///        this.applyFiltersAndSearch();
-///    }
-///
-///    updateTableFooter() {
-///        document.getElementById('visible-count').textContent = this.filteredInstances.length;
-///        document.getElementById('total-count').textContent = this.instances.length;
-///        
-///        const filterInfo = document.getElementById('filter-info');
-///        if (this.currentFilter !== 'all' || this.currentSearch) {
-///            let filterText = '';
-///            if (this.currentFilter !== 'all') {
-///                filterText += ` • Filtered by: ${this.currentFilter}`;
-///            }
-///            if (this.currentSearch) {
-///                filterText += ` • Search: "${this.currentSearch}"`;
-///            }
-///            filterInfo.textContent = filterText;
-///        } else {
-///            filterInfo.textContent = '';
-///        }
-///    }
-///
-///    renderVersionChart() {
-///        // Simple version distribution display
-///        const chartContainer = document.getElementById('version-chart-container');
-///        const versionSummary = document.getElementById('version-summary');
-///        
-///        if (!chartContainer || !versionSummary) return;
-///        
-///        // Count versions
-///        const versionCounts = {};
-///        this.instances.forEach(instance => {
-///            const version = instance.major_version;
-///            versionCounts[version] = (versionCounts[version] || 0) + 1;
-///        });
-///        
-///        // Create version summary
-///        let summaryHTML = '<div class="version-distribution">';
-///        Object.entries(versionCounts)
-///            .sort((a, b) => b[0] - a[0]) // Sort by version descending
-///            .forEach(([version, count]) => {
-///                const percentage = ((count / this.instances.length) * 100).toFixed(1);
-///                summaryHTML += `
-///                    <div class="version-item">
-///                        <span class="version-label">PostgreSQL ${version}</span>
-///                        <span class="version-count">${count} instances (${percentage}%)</span>
-///                    </div>
-///                `;
-///            });
-///        summaryHTML += '</div>';
-///        
-///        versionSummary.innerHTML = summaryHTML;
-///        chartContainer.style.display = 'block';
-///    }
-///
+
+    SortInstances() {
+        this.filteredCaches.sort((a, b) => {
+            let aValue, bValue;
+            
+            switch (this.currentSort.field) {
+                case 'name':
+                    aValue = (a.cache_cluster_id || a.replication_group_id || a.serverless_cache_name).toLowerCase()
+                    bValue = (b.cache_cluster_id || b.replication_group_id || b.serverless_cache_name).toLowerCase()
+                    break;
+                // case 'type':
+                //     aValue = this.cacheType(aValue)
+                //     bValue = this.cacheType(bValue)
+                //     break;
+                // case 'engine':
+                //     aValue = (a.environment || '').toLowerCase();
+                //     bValue = (b.environment || '').toLowerCase();
+                //     break;
+                // case 'version':
+                //     aValue = this.engineVersion(a).toLowerCase()
+                //     bValue = this.engineVersion(b).toLowerCase()
+                //     break;
+                // case 'critical_updates':
+                //     aValue = a.unapplied_update_actions_summary.total_unapplied_critical_updates
+                //     bValue = b.unapplied_update_actions_summary.total_unapplied_critical_updates
+                //     break;
+                // case 'important_updates':
+                //     aValue = a.unapplied_update_actions_summary.total_unapplied_important_updates
+                //     bValue = b.unapplied_update_actions_summary.total_unapplied_important_updates
+                //     break;
+                // case 'total_updates':
+                //     aValue = a.unapplied_update_actions_summary.total_unapplied_updates
+                //     bValue = b.unapplied_update_actions_summary.total_unapplied_updates
+                //     break;
+                default:
+                    return 0;
+            }
+            
+            if (aValue < bValue) return this.currentSort.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return this.currentSort.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
     showLoading() {
         const loadingState = document.getElementById('loading-state');
         if (loadingState) {
@@ -678,20 +312,6 @@ class ElastiCachesPage {
             container.style.display = 'block';
         }
     }
-
-//    showNoResults() {
-//        const noResults = document.getElementById('no-results');
-//        if (noResults) {
-//            noResults.style.display = 'block';
-//        }
-//    }
-//
-//    hideNoResults() {
-//        const noResults = document.getElementById('no-results');
-//        if (noResults) {
-//            noResults.style.display = 'none';
-//        }
-//    }
 }
 
 // Initialize RDS page when DOM is ready
@@ -750,242 +370,6 @@ elastiCacheStyle.textContent = `
         font-size: 14px;
         color: #505a5f;
         margin: 0;
-    }
-    
-    /* RDS Filters */
-    .rds-filters {
-        padding: 20px;
-        background: #f8f8f8;
-        border-radius: 4px;
-        margin-bottom: 20px;
-    }
-    
-    .filter-buttons {
-        margin-top: 15px;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-    
-    .filter-buttons .govuk-button {
-        margin: 0;
-    }
-    
-    .filter-buttons .govuk-button.active {
-        background-color: #1d70b8;
-        color: white;
-        border-color: #1d70b8;
-    }
-    
-    /* RDS Table Styling */
-    .rds-instances-table {
-        margin-top: 0;
-    }
-    
-    .rds-row--critical {
-        background-color: #fff5f5;
-        border-left: 4px solid #d4351c;
-    }
-    
-    .rds-row--warning {
-        background-color: #fff8f0;
-        border-left: 4px solid #f47738;
-    }
-    
-    /* Compliance Tags */
-    .compliance-tag {
-        padding: 4px 8px;
-        border-radius: 3px;
-        font-size: 12px;
-        font-weight: bold;
-        text-transform: uppercase;
-        display: inline-block;
-    }
-    
-    .compliance-tag--success {
-        background-color: #00703c;
-        color: white;
-    }
-    
-    .compliance-tag--warning {
-        background-color: #f47738;
-        color: white;
-    }
-    
-    .compliance-tag--critical {
-        background-color: #d4351c;
-        color: white;
-    }
-    
-    /* Environment Tags */
-    .environment-tag {
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-size: 11px;
-        font-weight: bold;
-        text-transform: uppercase;
-        display: inline-block;
-    }
-    
-    .environment-tag--production {
-        background-color: #d4351c;
-        color: white;
-    }
-    
-    .environment-tag--staging {
-        background-color: #f47738;
-        color: white;
-    }
-    
-    .environment-tag--development {
-        background-color: #1d70b8;
-        color: white;
-    }
-    
-    .environment-tag--test {
-        background-color: #7a2e8d;
-        color: white;
-    }
-    
-    .environment-tag--unknown {
-        background-color: #505a5f;
-        color: white;
-    }
-    
-    /* Status Tags */
-    .status-tag {
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-size: 11px;
-        font-weight: bold;
-        display: inline-block;
-    }
-    
-    .status-tag--available {
-        background-color: #00703c;
-        color: white;
-    }
-    
-    .status-tag--stopped {
-        background-color: #d4351c;
-        color: white;
-    }
-    
-    .status-tag--starting {
-        background-color: #f47738;
-        color: white;
-    }
-    
-    .status-tag--stopping {
-        background-color: #f47738;
-        color: white;
-    }
-    
-    /* Version Information */
-    .version-info {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .version-major {
-        color: #505a5f;
-        font-size: 11px;
-        margin-top: 2px;
-    }
-    
-    /* Small buttons */
-    .govuk-button--small {
-        font-size: 14px;
-        padding: 5px 10px;
-    }
-    
-    /* Action buttons */
-    .action-buttons {
-        margin: 20px 0;
-        display: flex;
-        gap: 15px;
-        flex-wrap: wrap;
-    }
-    
-    .action-buttons .govuk-button {
-        margin: 0;
-    }
-    
-    /* Table footer */
-    .table-footer {
-        margin-top: 15px;
-        padding: 10px 0;
-        border-top: 1px solid #b1b4b6;
-    }
-    
-    /* No results state */
-    .no-results {
-        text-align: center;
-        padding: 40px;
-        background: #f8f8f8;
-        border-radius: 4px;
-        margin-top: 20px;
-    }
-    
-    /* Sort indicators */
-    .sortable {
-        cursor: pointer;
-        position: relative;
-    }
-    
-    .sortable:hover {
-        background-color: #f8f8f8;
-    }
-    
-    .sort-arrow {
-        margin-left: 5px;
-        opacity: 0.3;
-    }
-    
-    .sortable.asc .sort-arrow::after {
-        content: "↑";
-        opacity: 1;
-    }
-    
-    .sortable.desc .sort-arrow::after {
-        content: "↓";
-        opacity: 1;
-    }
-    
-    /* Version distribution chart */
-    .chart-placeholder {
-        padding: 20px;
-        background: #f8f8f8;
-        border-radius: 4px;
-        text-align: center;
-    }
-    
-    .version-distribution {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
-        margin-top: 20px;
-    }
-    
-    .version-item {
-        padding: 15px;
-        background: white;
-        border-radius: 4px;
-        border: 1px solid #b1b4b6;
-        text-align: left;
-    }
-    
-    .version-label {
-        display: block;
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
-    
-    .version-count {
-        display: block;
-        color: #505a5f;
-        font-size: 14px;
     }
     
     /* Loading and error states */
