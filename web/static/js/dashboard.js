@@ -6,6 +6,7 @@ class ReportsDashboard {
         this.reports = [];
         this.costData = null;
         this.rdsData = null;
+        this.elastiCacheData = null;
         
         this.init();
     }
@@ -66,10 +67,11 @@ class ReportsDashboard {
 
         try {
             // Load all report modules in parallel
-            const [reportsResponse, costSummary, rdsSummary] = await Promise.allSettled([
+            const [reportsResponse, costSummary, rdsSummary, elastiCacheSummary] = await Promise.allSettled([
                 fetch('/api/reports/summary'),
                 fetch('/api/reports/costs'),
-                fetch('/api/reports/rds')
+                fetch('/api/reports/rds'),
+                fetch('/api/reports/elasticache'),
             ]);
 
             // Process reports list
@@ -93,6 +95,14 @@ class ReportsDashboard {
                 this.updateRDSModule();
             } else {
                 this.setRDSModuleError();
+            }
+
+            // Process ElastiCache module
+            if (elastiCacheSummary.status === 'fulfilled' && elastiCacheSummary.value.ok) {
+                this.elastiCacheData = await elastiCacheSummary.value.json();
+                this.updateElastiCacheModule();
+            } else {
+                this.setElastiCacheModuleError();
             }
 
             this.showDashboard();
@@ -127,6 +137,10 @@ class ReportsDashboard {
             // Fallback: try to get from applications API
             this.loadCostSummaryFallback();
         }
+    }
+
+    updateElastiCacheModule() {
+        this.setModuleStatus('elasticache', 'healthy', 'Available')
     }
 
     async loadCostSummaryFallback() {

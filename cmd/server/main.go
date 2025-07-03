@@ -91,6 +91,14 @@ func main() {
 	elastiCacheService = elasticache.NewElastiCacheService(awsClient.GetConfig(), cfg, log)
 	elastiCacheHandler = elasticache.NewElastiCacheHandler(elastiCacheService, log)
 
+	elastiCacheReport := elasticache.NewElastiCacheReport(elastiCacheService, log)
+	err = reportsManager.Register(elastiCacheReport)
+	if err != nil {
+		log.WithError(err).Error().Msg("Failed to register ElastiCache report - ElastiCache reporting will be unavailable")
+	} else {
+		log.Info().Msg("ElastiCache reporting module registered successfully")
+	}
+
 	// Initialize RDS module with error handling
 	log.Info().Msg("Initializing RDS reporting module")
 	rdsService = rds.NewRDSService(awsClient.GetConfig(), cfg, log)
@@ -299,6 +307,7 @@ func setupRouter(cfg *config.Config, log *logger.Logger, healthHandler *handlers
 			// Specific report type endpoints
 			reports.GET("/costs", getSpecificReport(reportsManager, "costs", log))
 			reports.GET("/rds", getSpecificReport(reportsManager, "rds", log))
+			reports.GET("/elasticache", getSpecificReport(reportsManager, "elasticache", log))
 		}
 	}
 
