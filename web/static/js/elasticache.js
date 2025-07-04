@@ -1,5 +1,5 @@
-// GOV.UK Reports Dashboard - RDS Module JavaScript
-// Handles RDS instances table, filtering, sorting, and data loading
+// GOV.UK Reports Dashboard - ElastiCache Module JavaScript
+// Handles ElastiCache caches table and data loading
 
 class ElastiCachesPage {
     constructor() {
