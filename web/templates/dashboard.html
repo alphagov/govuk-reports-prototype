@@ -148,6 +148,56 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ElastiCache Updates Checker Module -->
+                <div class="govuk-grid-column-one-half">
+                    <div class="report-module-card" id="elasticache-module">
+                        <div class="report-module-header">
+                            <h2 class="govuk-heading-m">ElastiCache Version Checker</h2>
+                            <span class="module-status" id="elasticache-status">
+                                <span class="status-indicator loading"></span>
+                                Loading...
+                            </span>
+                        </div>
+
+                        <div class="report-module-content">
+                            <p class="govuk-body">Monitor ElastiCaches and update compliance</p>
+
+                            <!-- ElastiCache Summary Metrics -->
+                            <div class="module-metrics" id="elasticache-metrics">
+                                <div class="metric">
+                                    <span class="metric-label">Serverless Clusters</span>
+                                    <span class="metric-value" id="elasticache-serverless-clusters">Loading...</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Replication Groups</span>
+                                    <span class="metric-value alert" id="elasticache-replication-groups">Loading...</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Non Replicated Cache Clusters</span>
+                                    <span class="metric-value" id="elasticache-non-replicated-cache-clusters">Loading...</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Unapplied Critical Updates</span>
+                                    <span class="metric-value" id="elasticache-unapplied-critical-updates">Loading...</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Unapplied Important Updates</span>
+                                    <span class="metric-value" id="elasticache-unapplied-important-updates">Loading...</span>
+                                </div>
+                            </div>
+
+                            <div class="module-actions">
+                                <a href="/elasticache" class="govuk-button govuk-button--secondary">
+                                    View ElastiCaches
+                                </a>
+                                <a href="/api/reports/elasticache" class="govuk-link" target="_blank">
+                                    API Data
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
             </div>
 
             <!-- Quick Actions -->
