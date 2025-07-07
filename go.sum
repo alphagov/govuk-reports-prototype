@@ -20,6 +20,8 @@ github.com/aws/aws-sdk-go-v2/internal/ini v1.3.45 h1:hze8YsjSh8Wl1rYa1CJpRmXP21B
 github.com/aws/aws-sdk-go-v2/internal/ini v1.3.45/go.mod h1:lD5M20o09/LCuQ2mE62Mb/iSdSlCNuj6H5ci7tW7OsE=
 github.com/aws/aws-sdk-go-v2/service/costexplorer v1.25.0 h1:4D5fE3EN/yOTu479hgwZxvzvQlOv/XyhlWfqt6iu1Nc=
 github.com/aws/aws-sdk-go-v2/service/costexplorer v1.25.0/go.mod h1:QkSNsCakxi2FwgLS6/eaV0S6KCH7Gkj6qmRHA84VZnc=
+github.com/aws/aws-sdk-go-v2/service/elasticache v1.46.3 h1:K1KtI95Fkz+2PT0OtVRsZyUzb4zHFMWOXNPkXy7LYDY=
+github.com/aws/aws-sdk-go-v2/service/elasticache v1.46.3/go.mod h1:kI+JDflKNLqdxVmdg2I8A3dmsCcJzAXXz5vKcHsyz9Y=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.4 h1:CXV68E2dNqhuynZJPB80bhPQwAKqBWVer887figW6Jc=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.4/go.mod h1:/xFi9KtvBXP97ppCz1TAEvU1Uf66qvid89rbem3wCzQ=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.37/go.mod h1:vBmDnwWXWxNPFRMmG2m/3MKOe+xEcMDo1tanpaWCcck=
