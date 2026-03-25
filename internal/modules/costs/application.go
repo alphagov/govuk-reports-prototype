@@ -237,7 +237,6 @@ func (s *ApplicationService) mapAppNameToSystemTag(app govuk.Application) string
 		"publishing-api":           "govuk-publishing-api",
 		"content-store":            "govuk-content-store",
 		"frontend":                 "govuk-frontend",
-		"government-frontend":      "govuk-government-frontend",
 		"collections":              "govuk-collections",
 		"finder-frontend":          "govuk-finder-frontend",
 		"whitehall":                "govuk-whitehall",
