@@ -9,8 +9,7 @@ import (
 
 	"govuk-reports-dashboard/internal/config"
 	"govuk-reports-dashboard/pkg/govuk"
-
-	"github.com/sirupsen/logrus"
+	"govuk-reports-dashboard/pkg/logger"
 )
 
 func main() {
@@ -26,12 +25,17 @@ func main() {
 	}
 
 	// Setup logger
-	logger := logrus.New()
-	logger.SetLevel(logrus.InfoLevel)
-	logger.SetFormatter(&logrus.JSONFormatter{})
+	logr, err := logger.New(logger.Config{
+		Level:  "info",
+		Format: "json",
+		Output: "stdout",
+	})
+	if err != nil {
+		log.Fatalf("Failed to create logger: %v", err)
+	}
 
 	// Create client
-	client := govuk.NewClient(cfg, logger)
+	client := govuk.NewClient(cfg, logr)
 
 	ctx := context.Background()
 

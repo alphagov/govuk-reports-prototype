@@ -11,8 +11,7 @@ import (
 	"time"
 
 	"govuk-reports-dashboard/internal/config"
-
-	"github.com/sirupsen/logrus"
+	"govuk-reports-dashboard/pkg/logger"
 )
 
 func setupTestClient(t *testing.T, serverURL string) *Client {
@@ -25,10 +24,13 @@ func setupTestClient(t *testing.T, serverURL string) *Client {
 		},
 	}
 	
-	logger := logrus.New()
-	logger.SetLevel(logrus.DebugLevel)
-	
-	return NewClientWithOptions(cfg, logger, ClientOptions{
+	log, _ := logger.New(logger.Config{
+		Level:  "debug",
+		Format: "console",
+		Output: "stdout",
+	})
+
+	return NewClientWithOptions(cfg, log, ClientOptions{
 		Timeout:    5 * time.Second,
 		CacheTTL:   1 * time.Minute,
 		Retries:    1,
