@@ -1,18 +1,18 @@
 module govuk-reports-dashboard
 
-go 1.22
+go 1.26
 
-toolchain go1.24.4
+toolchain go1.26.2
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.36.5
 	github.com/aws/aws-sdk-go-v2/config v1.18.45
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.43
 	github.com/aws/aws-sdk-go-v2/service/costexplorer v1.25.0
+	github.com/aws/aws-sdk-go-v2/service/elasticache v1.46.3
 	github.com/aws/aws-sdk-go-v2/service/rds v1.97.3
 	github.com/gin-gonic/gin v1.9.1
 	github.com/rs/zerolog v1.34.0
-	github.com/sirupsen/logrus v1.9.3
 )
 
 require (
@@ -20,7 +20,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.36 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.36 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.45 // indirect
-	github.com/aws/aws-sdk-go-v2/service/elasticache v1.46.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.17 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.15.2 // indirect

@@ -4,7 +4,7 @@
 # Variables
 APP_NAME := govuk-reports-dashboard
 BINARY_NAME := $(APP_NAME)
-GO_VERSION := 1.21
+GO_VERSION := 1.26
 DOCKER_TAG := latest
 EXAMPLE_BINARY := govuk-example
 
@@ -28,7 +28,7 @@ build: ## 🔨 Build the application binary
 .PHONY: build-example
 build-example: ## 📚 Build the example application
 	@echo "$(BLUE)🔨 Building example application...$(RESET)"
-	@go build -o bin/$(EXAMPLE_BINARY) ./examples/govuk_apps_example.go
+	@go build -o bin/$(EXAMPLE_BINARY) ./examples/govuk_apps
 	@echo "$(GREEN)✅ Example build complete: bin/$(EXAMPLE_BINARY)$(RESET)"
 
 .PHONY: build-all
@@ -76,7 +76,7 @@ run: ## 🚀 Run the application
 .PHONY: run-example
 run-example: ## 📚 Run the GOV.UK apps example
 	@echo "$(BLUE)📚 Running GOV.UK apps example...$(RESET)"
-	@go run ./examples/govuk_apps_example.go
+	@go run ./examples/govuk_apps
 
 .PHONY: run-with-profile
 run-with-profile: ## 🔐 Run with AWS profile (set AWS_PROFILE env var)
