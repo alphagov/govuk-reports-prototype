@@ -1,5 +1,7 @@
 # 🏛️ GOV.UK Reports Dashboard
 
+**Archived as the team can no longer maintain this project**
+
 > A reporting dashboard for monitoring GOV.UK services and infrastructure
 
 A Go app providing reporting capabilities for GOV.UK Web, Publishing, and Platform services. The dashboard integrates multiple monitoring systems and provides both web interfaces and REST APIs for infrastructure and application services.
